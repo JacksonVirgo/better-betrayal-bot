@@ -1,0 +1,139 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Alignment {
+  GOOD
+  NEUTRAL
+  EVIL
+}
+
+enum ActionType {
+  POSITIVE
+  NEUTRAL
+  NEGATIVE
+}
+
+enum ActionCategory {
+  VOTE_BLOCKING
+  VOTE_AVOIDING
+  VOTE_REDIRECTION
+  VOTE_IMMUNITY
+  VOTE_CHANGE
+  VISIT_BLOCKING
+  VISIT_REDIRECTION
+  REACTIVE
+  INVESTIGATION
+  KILLING
+  PROTECTION
+  SUPPORT
+  HEALING
+  DEBUFF
+  THEFT
+  DESTRUCTION
+  ALTERATION
+  VISITING
+}
+
+enum Rarity {
+  COMMON
+  UNCOMMON
+  RARE
+  EPIC
+  LEGENDARY
+  MYTHICAL
+  UNIQUE
+  ULTIMATE
+}
+
+model Role {
+  id        Int       @id @default(autoincrement())
+  name      String    @unique
+  alignment Alignment
+  abilities Ability[]
+  perks     Perk[]
+
+  updatedAt DateTime? @updatedAt
+}
+
+model Ability {
+  id             Int              @id @default(autoincrement())
+  role           Role             @relation(fields: [roleId], references: [id])
+  roleId         Int
+  name           String           @unique
+  actionType     ActionType?
+  categories     ActionCategory[]
+  charges        Int // -1 is unlimited
+  isAnyAbility   Boolean          @default(false)
+  rarity         Rarity?
+  effect         String
+  detailedEffect String?
+  upgrades       String[]
+  downgrades     String[]
+
+  updatedAt DateTime? @updatedAt
+}
+
+model Perk {
+  id             Int         @id @default(autoincrement())
+  role           Role        @relation(fields: [roleId], references: [id])
+  roleId         Int
+  name           String      @unique
+  actionType     ActionType?
+  effect         String
+  detailedEffect String?
+  upgrades       String[]
+  downgrades     String[]
+
+  updatedAt DateTime? @updatedAt
+}
+
+model Item {
+  id                 Int              @id @default(autoincrement())
+  name               String           @unique
+  rarity             Rarity
+  actionType         ActionType?
+  categories         ActionCategory[]
+  effect             String
+  detailedEffect     String?
+  cost               Int?
+  bannedFromItemRain Boolean          @default(false)
+  upgrades           String[]
+  downgrades         String[]
+
+  updatedAt DateTime? @updatedAt
+}
+
+model Status {
+  id             Int     @id @default(autoincrement())
+  name           String  @unique
+  effect         String
+  detailedEffect String?
+
+  updatedAt DateTime? @updatedAt
+}
+
+model Inventory {
+  id        Int    @id @default(autoincrement())
+  channelId String @unique
+  userId    String @unique
+
+  coins      Int      @default(0)
+  coinBonus  Int      @default(0)
+  inventory  String[]
+  aaList     String[]
+  statuses   String[]
+  effects    String[]
+  immunities String[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
