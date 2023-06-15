@@ -1,9 +1,9 @@
-import { Ability, Item, Perk, Status, Role, Inventory } from '@prisma/client';
-import { Guild, EmbedBuilder, Colors } from 'discord.js';
+import { Ability, Item, Perk, Status, Role, AbilityChange } from '@prisma/client';
+import { Guild, EmbedBuilder, Colors, ActionRowBuilder, StringSelectMenuBuilder } from 'discord.js';
 import { rarityToColor } from './colors';
 import { capitalize } from './string';
 import { formatActionCategory, formatActionType } from './database';
-
+import viewAbilityChangeSelect from '../interactions/selectmenu/viewAbilityChange';
 export function formatRoleEmbed(_guild: Guild, role: Role & { abilities: Ability[]; perks: Perk[] }) {
 	const embed = new EmbedBuilder();
 	embed.setTitle(role.name);
@@ -106,6 +106,7 @@ export function formatAbilityEmbed(_guild: Guild, ability: Ability & { role: { n
 	]);
 
 	let footerList: string[] = [ability.rarity ? `${capitalize(ability.rarity)} AA` : 'Not an AA'];
+	if (ability.isRoleSpecific) footerList.push(`Role Specific`);
 
 	if (ability.actionType) {
 		const type = formatActionType(ability.actionType);
@@ -140,69 +141,68 @@ export function formatPerkEmbed(_guild: Guild, perk: Perk & { role: { name: stri
 	]);
 
 	const iconURL = _guild.iconURL({ extension: 'png', size: 1024 });
-	embed.setFooter({ iconURL: iconURL ?? undefined, text: '\u200B/' });
+	embed.setFooter({ iconURL: iconURL ?? undefined, text: '\u200B' });
 
 	return embed;
 }
 
-export function formatInventory(inventory: Inventory) {
-	const e = new EmbedBuilder();
+export function formatAbilityChanges(guild: Guild, ability: Ability & { changes: AbilityChange[] }) {
+	const embed = new EmbedBuilder();
+	embed.setTitle(`Upgrades/Downgrades for ${capitalize(ability.name)}`);
+	embed.setColor('#CE8964');
 
-	e.setTitle('Inventory');
-	e.setColor('White');
+	const totalUpgrades = ability.changes.filter((change) => change.changeType === 'UPGRADE');
+	const totalDowngrades = ability.changes.filter((change) => change.changeType === 'DOWNGRADE');
 
-	e.addFields([
-		{
-			name: 'Coins',
-			value: `> ${inventory.coins}`,
-			inline: true,
-		},
-		{
-			name: 'Coin Bonus',
-			value: `> ${inventory.coinBonus}%`,
-			inline: true,
-		},
-	]);
+	embed.addFields(
+		totalUpgrades.map((upgrade, index) => {
+			return {
+				name: `[UPG] ${upgrade.name}`,
+				value: `${upgrade.changes}`,
+			};
+		})
+	);
 
-	let statusString = '> None';
-	e.addFields({
-		name: 'Statuses',
-		value: statusString,
-	});
+	embed.addFields(
+		totalDowngrades.map((downgrade, index) => {
+			return {
+				name: `[DGD] ${downgrade.name}`,
+				value: `${downgrade.changes}`,
+			};
+		})
+	);
 
-	let itemString = '> None';
-	e.addFields({
-		name: 'Items',
-		value: itemString,
-		inline: true,
-	});
+	const iconURL = guild.iconURL({ extension: 'png', size: 1024 });
+	embed.setFooter({ iconURL: iconURL ?? undefined, text: '\u200B' });
 
-	let aaString = '> None';
-	e.addFields({
-		name: 'AAs',
-		value: aaString,
-		inline: true,
-	});
+	const row = new ActionRowBuilder<StringSelectMenuBuilder>();
+	const select = new StringSelectMenuBuilder();
+	select.setCustomId(viewAbilityChangeSelect.getCustomID());
+	select.setPlaceholder('Select an upgrade/downgrade to view the full effect');
+	select.addOptions(
+		[
+			totalUpgrades.map((change) => {
+				return {
+					label: 'UPG - ' + change.name,
+					description: change.changes,
+					value: change.id.toString(),
+				};
+			}),
+			totalDowngrades.map((change) => {
+				return {
+					label: 'DGD - ' + change.name,
+					description: change.changes,
+					value: change.id.toString(),
+				};
+			}),
+		].flat()
+	);
+	select.setMinValues(1);
+	select.setMaxValues(1);
+	row.addComponents(select);
 
-	let immunityString = '> None';
-	e.addFields({
-		name: 'Immunities',
-		value: immunityString,
-	});
-
-	let effectString = '> None';
-	e.addFields({
-		name: 'Effects',
-		value: effectString,
-	});
-
-	return e;
-
-	/* Coins: 859 [0%]
-Inventory: Flint & Steel, Seed Gun, Vortex Liquid, Cheque
-AA: Spy [0]
-Statuses: Unlucky, Paralyzed
-Effects: 
-Immunities: 
-Vote(s): */
+	return {
+		embed: embed,
+		components: row,
+	};
 }

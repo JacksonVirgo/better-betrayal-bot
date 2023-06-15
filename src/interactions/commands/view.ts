@@ -4,7 +4,7 @@ import { formatAbilityEmbed, formatItemEmbed, formatPerkEmbed, formatRoleEmbed, 
 import viewRoleButton from '../buttons/viewRole';
 import { prisma } from '../../database';
 import { findBestMatch } from 'string-similarity';
-
+import viewChangesButton from '../buttons/viewChanges';
 const data = new SlashCommandBuilder().setName('view').setDescription('View information about Betrayal');
 
 data.addSubcommand((sub) =>
@@ -117,6 +117,11 @@ async function viewAbility(i: ChatInputCommandInteraction) {
 					name: true,
 				},
 			},
+			changes: {
+				select: {
+					id: true,
+				},
+			},
 		},
 	});
 
@@ -129,12 +134,15 @@ async function viewAbility(i: ChatInputCommandInteraction) {
 			.setLabel(`View ${ability.role.name}`)
 			.setStyle(ButtonStyle.Secondary)
 	);
-	// row.addComponents(
-	// 	new ButtonBuilder()
-	// 		.setCustomId(viewRoleButton.createCustomID(ability.role.name + '1'))
-	// 		.setLabel(`More Details`)
-	// 		.setStyle(ButtonStyle.Secondary)
-	// );
+
+	if (ability.changes.length > 0) {
+		row.addComponents(
+			new ButtonBuilder()
+				.setCustomId(viewChangesButton.createCustomID(ability.name))
+				.setLabel(`View Upgrades/Downgrades`)
+				.setStyle(ButtonStyle.Secondary)
+		);
+	}
 
 	return await i.editReply({
 		content: bestMatch.toLowerCase() != name.toLowerCase() ? `Did you mean __${bestMatch}__?` : undefined,

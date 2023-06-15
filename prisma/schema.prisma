@@ -60,7 +60,6 @@ model Role {
   alignment Alignment
   abilities Ability[]
   perks     Perk[]
-
   updatedAt DateTime? @updatedAt
 }
 
@@ -73,13 +72,12 @@ model Ability {
   categories     ActionCategory[]
   charges        Int // -1 is unlimited
   isAnyAbility   Boolean          @default(false)
+  isRoleSpecific Boolean?
   rarity         Rarity?
   effect         String
   detailedEffect String?
-  upgrades       String[]
-  downgrades     String[]
-
-  updatedAt DateTime? @updatedAt
+  updatedAt      DateTime?        @updatedAt
+  changes        AbilityChange[]
 }
 
 model Perk {
@@ -90,10 +88,7 @@ model Perk {
   actionType     ActionType?
   effect         String
   detailedEffect String?
-  upgrades       String[]
-  downgrades     String[]
-
-  updatedAt DateTime? @updatedAt
+  updatedAt      DateTime?   @updatedAt
 }
 
 model Item {
@@ -106,34 +101,41 @@ model Item {
   detailedEffect     String?
   cost               Int?
   bannedFromItemRain Boolean          @default(false)
-  upgrades           String[]
-  downgrades         String[]
-
-  updatedAt DateTime? @updatedAt
+  updatedAt          DateTime?        @updatedAt
+  changes            ItemChange[]
 }
 
 model Status {
-  id             Int     @id @default(autoincrement())
-  name           String  @unique
+  id             Int       @id @default(autoincrement())
+  name           String    @unique
   effect         String
   detailedEffect String?
-
-  updatedAt DateTime? @updatedAt
+  updatedAt      DateTime? @updatedAt
 }
 
-model Inventory {
-  id        Int    @id @default(autoincrement())
-  channelId String @unique
-  userId    String @unique
+enum ChangeType {
+  UPGRADE
+  DOWNGRADE
+}
 
-  coins      Int      @default(0)
-  coinBonus  Int      @default(0)
-  inventory  String[]
-  aaList     String[]
-  statuses   String[]
-  effects    String[]
-  immunities String[]
+model AbilityChange {
+  id         Int        @id @default(autoincrement())
+  ability    Ability    @relation(fields: [abilityId], references: [id])
+  abilityId  Int
+  name       String     @unique
+  effect     String
+  changes    String
+  changeType ChangeType
+  updatedAt  DateTime?  @updatedAt
+}
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+model ItemChange {
+  id         Int        @id @default(autoincrement())
+  item       Item       @relation(fields: [itemId], references: [id])
+  itemId     Int
+  name       String     @unique
+  effect     String
+  changes    String
+  changeType ChangeType
+  updatedAt  DateTime?  @updatedAt
 }

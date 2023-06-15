@@ -1,23 +1,9 @@
-import {
-	ActionRowBuilder,
-	ButtonBuilder,
-	ButtonStyle,
-	ChatInputCommandInteraction,
-	ColorResolvable,
-	EmbedBuilder,
-	Message,
-	MessagePayload,
-	SlashCommandBuilder,
-	TextChannel,
-} from 'discord.js';
+import { ChannelType, ChatInputCommandInteraction, ColorResolvable, EmbedBuilder, SlashCommandBuilder } from 'discord.js';
 import { newSlashCommand } from '../../structures/BotClient';
 import { prisma } from '../../database';
-import { formatItemEmbed } from '../../util/embeds';
-import { fetchOrCreateWebhook } from '../../util/webhook';
-import { REST } from 'discord.js';
-import { client } from '../..';
-import { Item, Rarity } from '@prisma/client';
+import { Alignment, Item } from '@prisma/client';
 import { RarityColors } from '../../util/colors';
+import { formatRoleEmbed } from '../../util/embeds';
 
 const data = new SlashCommandBuilder().setName('post').setDescription('Staff only. Posts important stuff idk');
 
@@ -37,6 +23,8 @@ export default newSlashCommand({
 
 		if (thing === 'itemshop') {
 			return postItemShop(i);
+		} else if (thing === 'rolelist') {
+			return postRoleList(i);
 		}
 	},
 });
@@ -155,4 +143,58 @@ async function postItemShop(i: ChatInputCommandInteraction) {
 	channel.send({ embeds: [unique] });
 
 	await i.deleteReply();
+}
+
+async function postRoleList(i: ChatInputCommandInteraction) {
+	const channel = i.channel;
+	if (!channel) return;
+	if (channel.type !== ChannelType.GuildText) return;
+	if (!i.guild) return;
+
+	const parent = channel.parent;
+	if (!parent) return;
+
+	await i.reply({ content: 'Going', ephemeral: true });
+
+	const forum = await parent.children.create({
+		name: 'role-list',
+		type: ChannelType.GuildForum,
+	});
+
+	forum.setAvailableTags([
+		{
+			name: Alignment.GOOD,
+			id: 'good',
+		},
+		{
+			name: Alignment.NEUTRAL,
+			id: 'neutral',
+		},
+		{
+			name: Alignment.EVIL,
+			id: 'evil',
+		},
+	]);
+
+	// Iterate over all roles. 5 at a time through pagination and create a forum post for each
+
+	const allRoles = await prisma.role.findMany({
+		where: {},
+		include: {
+			abilities: true,
+			perks: true,
+		},
+	});
+
+	for (let index = 0; index < allRoles.length; index++) {
+		const role = allRoles[index];
+		const embed = formatRoleEmbed(i.guild, role);
+		await forum.threads.create({
+			name: allRoles[index].name,
+			message: {
+				embeds: [embed],
+			},
+			appliedTags: [role.alignment.toLowerCase()],
+		});
+	}
 }
