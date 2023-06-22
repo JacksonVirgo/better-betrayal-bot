@@ -1,6 +1,8 @@
 import { ChatInputCommandInteraction, Colors, EmbedBuilder, SlashCommandBuilder } from 'discord.js';
 import { newSlashCommand } from '../../structures/BotClient';
 import { getLuckTable, getRandomAnyAbility, getRandomItem } from '../../util/luck';
+import { prisma } from '../../database';
+import { findBestMatch } from 'string-similarity';
 
 const data = new SlashCommandBuilder().setName('luck').setDescription('View the luck table for a specific luck value');
 
@@ -140,16 +142,22 @@ async function calculateItemRain(i: ChatInputCommandInteraction) {
 async function calculatePowerDrop(i: ChatInputCommandInteraction) {
 	const luck = i.options.getInteger('luck', true);
 	const hidden = i.options.getBoolean('hidden') ?? false;
+
 	await i.deferReply({ ephemeral: hidden });
 
 	const luckTable = getLuckTable(luck);
-
 	const ability = await getRandomAnyAbility(luckTable);
 
 	const embed = new EmbedBuilder();
 	embed.setTitle(`Power Drop: ${luck} Luck`);
 	embed.setColor(Colors.LuminousVividPink);
 	embed.setDescription(`Received **${ability.name}**`);
+
+	if (ability.isRoleSpecific) {
+		embed.setFooter({
+			text: 'This contains role specific abilities.',
+		});
+	}
 
 	return i.editReply({ embeds: [embed] });
 }
@@ -170,8 +178,11 @@ async function calculateCarePackage(i: ChatInputCommandInteraction) {
 		items.push(item.name);
 	}
 
-	for (let i = 0; i < aaCount; i++) {
+	let containsRoleSpecific = false;
+
+	for (let j = 0; j < aaCount; j++) {
 		const ability = await getRandomAnyAbility(luckTable);
+		if (ability.isRoleSpecific) containsRoleSpecific = true;
 		aas.push(ability.name);
 	}
 
@@ -200,6 +211,12 @@ async function calculateCarePackage(i: ChatInputCommandInteraction) {
 	embed.setTitle(`Care Package: ${luck} Luck`);
 	embed.setColor(Colors.LuminousVividPink);
 	embed.setDescription(`Received ${itemCount} items: ${itemMessage}\nReceived ${aaCount} AAs: ${aaMessage}`);
+
+	if (containsRoleSpecific) {
+		embed.setFooter({
+			text: 'This contains role specific abilities.',
+		});
+	}
 
 	return i.editReply({ embeds: [embed] });
 }

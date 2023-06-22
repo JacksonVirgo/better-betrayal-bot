@@ -1,6 +1,7 @@
-import { ChatInputCommandInteraction, Interaction } from 'discord.js';
+import { ChatInputCommandInteraction, Interaction, WebhookClient } from 'discord.js';
 import { slashCommands } from '../../structures/BotClient';
 import { Button, Modal, SelectMenu } from '../../structures/interactions';
+import config from '../../config';
 
 export default async function onInteraction(i: Interaction<any>) {
 	if (i.isChatInputCommand()) {
@@ -8,6 +9,12 @@ export default async function onInteraction(i: Interaction<any>) {
 		if (!command) return console.error(`No command matching ${i.commandName} was found.`);
 		try {
 			const inter = i as ChatInputCommandInteraction;
+
+			const wh = new WebhookClient({ url: config.LOGS_WEBHOOK });
+			const sub = inter.options.getSubcommand(false);
+			const subGroup = inter.options.getSubcommandGroup(false);
+			wh.send({ content: `[COMMAND] **${i.user.username}** executed command **${i.commandName}${subGroup ? ` ${subGroup}` : ''}${sub ? ` ${sub}` : ''}**` });
+
 			command.execute(inter);
 		} catch (err) {
 			console.log(err);

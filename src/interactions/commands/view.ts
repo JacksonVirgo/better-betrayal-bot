@@ -1,10 +1,12 @@
 import { ActionRowBuilder, ButtonBuilder, ButtonStyle, ChatInputCommandInteraction, SlashCommandBuilder } from 'discord.js';
 import { newSlashCommand } from '../../structures/BotClient';
-import { formatAbilityEmbed, formatItemEmbed, formatPerkEmbed, formatRoleEmbed, formatStatusEmbed } from '../../util/embeds';
+import { formatAbilityEmbed, formatInventory, formatItemEmbed, formatPerkEmbed, formatRoleEmbed, formatRolePlainText, formatStatusEmbed } from '../../util/embeds';
 import viewRoleButton from '../buttons/viewRole';
 import { prisma } from '../../database';
 import { findBestMatch } from 'string-similarity';
 import viewChangesButton from '../buttons/viewChanges';
+import { getClosestItem, getInventory } from '../../util/database';
+
 const data = new SlashCommandBuilder().setName('view').setDescription('View information about Betrayal');
 
 data.addSubcommand((sub) =>
@@ -13,6 +15,7 @@ data.addSubcommand((sub) =>
 		.setDescription('View a role')
 		.addStringOption((opt) => opt.setName('name').setDescription('The role to view').setRequired(true))
 		.addBooleanOption((opt) => opt.setName('hidden').setDescription('To make this for only you to see'))
+		.addBooleanOption((opt) => opt.setName('plaintext').setDescription('View the role in plaintext'))
 );
 data.addSubcommand((sub) =>
 	sub
@@ -43,6 +46,13 @@ data.addSubcommand((sub) =>
 		.addBooleanOption((opt) => opt.setName('hidden').setDescription('To make this for only you to see'))
 );
 
+data.addSubcommand((sub) =>
+	sub
+		.setName('inventory')
+		.setDescription('View your inventory (defaults to hidden outside of you channel)')
+		.addBooleanOption((opt) => opt.setName('hidden').setDescription('To make this for only you to see'))
+);
+
 export default newSlashCommand({
 	data,
 	execute: async (i) => {
@@ -60,6 +70,9 @@ export default newSlashCommand({
 				return await viewItem(i);
 			case 'status':
 				return await viewStatus(i);
+			case 'inventory':
+				return await viewInventory(i);
+
 			default:
 				return await i.reply({ content: 'Invalid subcommand', ephemeral: true });
 		}
@@ -70,6 +83,7 @@ async function viewRole(i: ChatInputCommandInteraction) {
 	if (!i.guild) return;
 	const name = i.options.getString('name', true);
 	const hidden = i.options.getBoolean('hidden') ?? false;
+	const plaintext = i.options.getBoolean('plaintext') ?? false;
 	await i.deferReply({ ephemeral: hidden });
 
 	const allRoles = await prisma.role.findMany({ where: {}, select: { name: true } });
@@ -89,11 +103,19 @@ async function viewRole(i: ChatInputCommandInteraction) {
 
 	if (!fetchedRole) return i.reply({ content: `Role ${name} not found`, ephemeral: true });
 
-	const embed = formatRoleEmbed(i.guild, fetchedRole);
+	const correctionString = bestMatch.toLowerCase() != name.toLowerCase() ? `Did you mean __${bestMatch}__?` : undefined;
 
+	if (!plaintext) {
+		const embed = formatRoleEmbed(i.guild, fetchedRole);
+		return await i.editReply({
+			content: correctionString,
+			embeds: [embed],
+		});
+	}
+
+	const plaintextRolecard = formatRolePlainText(i.guild, fetchedRole);
 	return await i.editReply({
-		content: bestMatch.toLowerCase() != name.toLowerCase() ? `Did you mean __${bestMatch}__?` : undefined,
-		embeds: [embed],
+		content: correctionString ? correctionString + '\n' + plaintextRolecard : plaintextRolecard,
 	});
 }
 
@@ -128,20 +150,10 @@ async function viewAbility(i: ChatInputCommandInteraction) {
 	if (!ability) return i.reply({ content: `Ability ${name} not found`, ephemeral: true });
 	const embed = formatAbilityEmbed(i.guild, ability);
 	const row = new ActionRowBuilder<ButtonBuilder>();
-	row.addComponents(
-		new ButtonBuilder()
-			.setCustomId(viewRoleButton.createCustomID(ability.role.name))
-			.setLabel(`View ${ability.role.name}`)
-			.setStyle(ButtonStyle.Secondary)
-	);
+	row.addComponents(new ButtonBuilder().setCustomId(viewRoleButton.createCustomID(ability.role.name)).setLabel(`View ${ability.role.name}`).setStyle(ButtonStyle.Secondary));
 
 	if (ability.changes.length > 0) {
-		row.addComponents(
-			new ButtonBuilder()
-				.setCustomId(viewChangesButton.createCustomID(ability.name))
-				.setLabel(`View Upgrades/Downgrades`)
-				.setStyle(ButtonStyle.Secondary)
-		);
+		row.addComponents(new ButtonBuilder().setCustomId(viewChangesButton.createCustomID(ability.name)).setLabel(`View Upgrades/Downgrades`).setStyle(ButtonStyle.Secondary));
 	}
 
 	return await i.editReply({
@@ -180,12 +192,7 @@ async function viewPerk(i: ChatInputCommandInteraction) {
 	const embed = formatPerkEmbed(i.guild, fetched);
 
 	const row = new ActionRowBuilder<ButtonBuilder>();
-	row.addComponents(
-		new ButtonBuilder()
-			.setCustomId(viewRoleButton.createCustomID(fetched.role.name))
-			.setLabel(`View ${fetched.role.name}`)
-			.setStyle(ButtonStyle.Secondary)
-	);
+	row.addComponents(new ButtonBuilder().setCustomId(viewRoleButton.createCustomID(fetched.role.name)).setLabel(`View ${fetched.role.name}`).setStyle(ButtonStyle.Secondary));
 
 	return i.editReply({
 		content: bestMatch.toLowerCase() != name.toLowerCase() ? `Did you mean __${bestMatch}__?` : undefined,
@@ -200,21 +207,13 @@ async function viewItem(i: ChatInputCommandInteraction) {
 	const hidden = i.options.getBoolean('hidden') ?? false;
 	await i.deferReply({ ephemeral: hidden });
 
-	const allItems = await prisma.item.findMany({ where: {}, select: { name: true } });
-	const allItemNames = allItems.map((i) => i.name);
-	const spellCheck = findBestMatch(name, allItemNames);
-	const bestMatch = spellCheck.bestMatch.target;
+	const { item, correctedName } = await getClosestItem(name);
 
-	const fetchedItem = await prisma.item.findUnique({
-		where: {
-			name: bestMatch,
-		},
-	});
+	if (!item) return i.reply({ content: `Item ${name} not found`, ephemeral: true });
 
-	if (!fetchedItem) return i.reply({ content: `Item ${name} not found`, ephemeral: true });
+	const embed = formatItemEmbed(i.guild, item);
 
-	const embed = formatItemEmbed(i.guild, fetchedItem);
-	return i.editReply({ content: bestMatch.toLowerCase() != name.toLowerCase() ? `Did you mean __${bestMatch}__?` : undefined, embeds: [embed] });
+	return i.editReply({ content: correctedName.toLowerCase() != name.toLowerCase() ? `Did you mean __${correctedName}__?` : undefined, embeds: [embed] });
 }
 
 async function viewStatus(i: ChatInputCommandInteraction) {
@@ -238,4 +237,17 @@ async function viewStatus(i: ChatInputCommandInteraction) {
 
 	const embed = formatStatusEmbed(i.guild, fetchedStatus);
 	return i.editReply({ content: bestMatch.toLowerCase() != name.toLowerCase() ? `Did you mean __${bestMatch}__?` : undefined, embeds: [embed] });
+}
+
+async function viewInventory(i: ChatInputCommandInteraction) {
+	const hidden = i.options.getBoolean('hidden') ?? false;
+
+	const inventory = await getInventory(i.user.id);
+	if (!inventory) return i.reply({ content: 'You do not have an inventory', ephemeral: true });
+	const isInChannel = i.channelId && i.channelId == inventory.channelId;
+
+	await i.deferReply({ ephemeral: hidden ?? !isInChannel });
+
+	const { embed } = formatInventory(inventory);
+	return i.editReply({ embeds: [embed] });
 }

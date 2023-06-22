@@ -4,6 +4,8 @@ import { prisma } from '../../database';
 import { Alignment, Item } from '@prisma/client';
 import { RarityColors } from '../../util/colors';
 import { formatRoleEmbed } from '../../util/embeds';
+import { formatActionType, formatActionCategory } from '../../util/database';
+import { capitalize } from '../../util/string';
 
 const data = new SlashCommandBuilder().setName('post').setDescription('Staff only. Posts important stuff idk');
 
@@ -46,13 +48,33 @@ async function postItemShop(i: ChatInputCommandInteraction) {
 			let label = '';
 			if (!canBeBought && !canBeRanded) label = 'Cannot be Bought/Randed';
 			else if (!canBeBought) label = 'Cannot be Bought';
-			else label = `${item.cost}`;
+			else label = `${item.cost ?? 'Cannot be Bought'}`;
 			if (!canBeRanded && canBeBought) label += ' - Cannot be Randed';
 			const effect = item.effect.split('\\n').join('\n');
+			const extraEffect = item.detailedEffect?.split('\\n').join('\n');
+
+			let footerList: string[] = [capitalize(item.rarity)];
+
+			if (item.actionType) {
+				const type = formatActionType(item.actionType);
+				if (type) footerList.push(type);
+			}
+
+			for (const category of item.categories) {
+				const cat = formatActionCategory(category);
+				if (cat) footerList.push(cat);
+			}
+
 			e.addFields({
-				name: `${item.name} - [${label}]`,
+				name: `${item.name} - [${label}] - ${footerList.join(' · ')}`,
 				value: effect,
 			});
+			if (extraEffect) {
+				e.addFields({
+					name: '\u200B',
+					value: extraEffect,
+				});
+			}
 		}
 
 		e.setFooter({ text: '\u200B', iconURL: iconURL ?? undefined });
@@ -63,86 +85,102 @@ async function postItemShop(i: ChatInputCommandInteraction) {
 	const commonEmbed = formatEmbed(
 		'Common',
 		RarityColors.COMMON,
-		await prisma.item.findMany({
-			where: {
-				rarity: 'COMMON',
-			},
-		})
+		(
+			await prisma.item.findMany({
+				where: {
+					rarity: 'COMMON',
+				},
+			})
+		).sort((a, b) => a.id - b.id)
 	);
 
 	const uncommonEmbed = formatEmbed(
 		'Uncommon',
 		RarityColors.UNCOMMON,
-		await prisma.item.findMany({
-			where: {
-				rarity: 'UNCOMMON',
-			},
-		})
+		(
+			await prisma.item.findMany({
+				where: {
+					rarity: 'UNCOMMON',
+				},
+			})
+		).sort((a, b) => a.id - b.id)
 	);
 
 	const rareEmbed = formatEmbed(
 		'Rare',
 		RarityColors.RARE,
-		await prisma.item.findMany({
-			where: {
-				rarity: 'RARE',
-			},
-		})
+		(
+			await prisma.item.findMany({
+				where: {
+					rarity: 'RARE',
+				},
+			})
+		).sort((a, b) => a.id - b.id)
 	);
 
 	const epicEmbed = formatEmbed(
 		'Epic',
 		RarityColors.EPIC,
-		await prisma.item.findMany({
-			where: {
-				rarity: 'EPIC',
-			},
-		})
+		(
+			await prisma.item.findMany({
+				where: {
+					rarity: 'EPIC',
+				},
+			})
+		).sort((a, b) => a.id - b.id)
 	);
 
 	const legendaryEmbed = formatEmbed(
 		'Legendary',
 		RarityColors.LEGENDARY,
-		await prisma.item.findMany({
-			where: {
-				rarity: 'LEGENDARY',
-			},
-		})
+		(
+			await prisma.item.findMany({
+				where: {
+					rarity: 'LEGENDARY',
+				},
+			})
+		).sort((a, b) => a.id - b.id)
 	);
 
 	const mythicEmbed = formatEmbed(
 		'Mythical',
 		RarityColors.MYTHICAL,
-		await prisma.item.findMany({
-			where: {
-				rarity: 'MYTHICAL',
-			},
-		})
+		(
+			await prisma.item.findMany({
+				where: {
+					rarity: 'MYTHICAL',
+				},
+			})
+		).sort((a, b) => a.id - b.id)
 	);
 
 	const unique = formatEmbed(
 		'Unique',
 		RarityColors.UNIQUE,
-		await prisma.item.findMany({
-			where: {
-				rarity: 'UNIQUE',
-			},
-		})
+		(
+			await prisma.item.findMany({
+				where: {
+					rarity: 'UNIQUE',
+				},
+			})
+		).sort((a, b) => a.id - b.id)
 	);
 
 	const channel = i.channel;
 
 	if (!channel) return;
 
-	channel.send({ embeds: [commonEmbed] });
-	channel.send({ embeds: [uncommonEmbed] });
-	channel.send({ embeds: [rareEmbed] });
-	channel.send({ embeds: [epicEmbed] });
-	channel.send({ embeds: [legendaryEmbed] });
-	channel.send({ embeds: [mythicEmbed] });
-	channel.send({ embeds: [unique] });
+	const ephemeral = true;
 
-	await i.deleteReply();
+	await i.followUp({ embeds: [commonEmbed], ephemeral: ephemeral });
+	await i.followUp({ embeds: [uncommonEmbed], ephemeral: ephemeral });
+	await i.followUp({ embeds: [rareEmbed], ephemeral: ephemeral });
+	await i.followUp({ embeds: [epicEmbed], ephemeral: ephemeral });
+	await i.followUp({ embeds: [legendaryEmbed], ephemeral: ephemeral });
+	await i.followUp({ embeds: [mythicEmbed], ephemeral: ephemeral });
+	await i.followUp({ embeds: [unique], ephemeral: ephemeral });
+
+	// await i.deleteReply();
 }
 
 async function postRoleList(i: ChatInputCommandInteraction) {

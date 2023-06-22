@@ -6,7 +6,8 @@
 	"scripts": {
 		"dev": "nodemon ./src/index.ts",
 		"build:prisma": "npx prisma format && npx prisma generate && npx prisma db push",
-		"build": "tsc"
+		"build": "tsc",
+		"start": "pm2 start ./build/index.js --name betrayal-bot"
 	},
 	"keywords": [],
 	"author": "",

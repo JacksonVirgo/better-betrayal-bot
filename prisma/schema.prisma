@@ -54,6 +54,10 @@ enum Rarity {
   ULTIMATE
 }
 
+enum PerkCategory {
+  TOGGLABLE
+}
+
 model Role {
   id        Int       @id @default(autoincrement())
   name      String    @unique
@@ -76,19 +80,24 @@ model Ability {
   rarity         Rarity?
   effect         String
   detailedEffect String?
-  updatedAt      DateTime?        @updatedAt
-  changes        AbilityChange[]
+
+  changes           AbilityChange[]
+  ownedAnyAbilities OwnedAnyAbility[]
+  ownedAbilities    OwnedAbility[]
+
+  updatedAt DateTime? @updatedAt
 }
 
 model Perk {
-  id             Int         @id @default(autoincrement())
-  role           Role        @relation(fields: [roleId], references: [id])
-  roleId         Int
-  name           String      @unique
-  actionType     ActionType?
-  effect         String
-  detailedEffect String?
-  updatedAt      DateTime?   @updatedAt
+  id         Int            @id @default(autoincrement())
+  role       Role           @relation(fields: [roleId], references: [id])
+  roleId     Int
+  name       String         @unique
+  categories PerkCategory[] @default([])
+  effect     String
+  ownedPerks OwnedPerk[]
+
+  updatedAt DateTime? @updatedAt
 }
 
 model Item {
@@ -101,16 +110,21 @@ model Item {
   detailedEffect     String?
   cost               Int?
   bannedFromItemRain Boolean          @default(false)
-  updatedAt          DateTime?        @updatedAt
   changes            ItemChange[]
+  ownedItems         OwnedItem[]
+  iconURL            String?
+  customColour       String?
+
+  updatedAt DateTime? @updatedAt
 }
 
 model Status {
-  id             Int       @id @default(autoincrement())
-  name           String    @unique
+  id             Int           @id @default(autoincrement())
+  name           String        @unique
   effect         String
   detailedEffect String?
-  updatedAt      DateTime? @updatedAt
+  updatedAt      DateTime?     @updatedAt
+  ownedStatuses  OwnedStatus[]
 }
 
 enum ChangeType {
@@ -138,4 +152,103 @@ model ItemChange {
   changes    String
   changeType ChangeType
   updatedAt  DateTime?  @updatedAt
+
+  ownedItems OwnedItem[]
+}
+
+model Inventory {
+  id Int @id @default(autoincrement())
+
+  discordId String @unique
+  channelId String @unique
+
+  coins         Int               @default(0)
+  coinBonus     Int               @default(0)
+  luckBonus     Int               @default(0)
+  inventorySize Int               @default(4)
+  items         OwnedItem[]
+  statuses      OwnedStatus[]
+  immunities    OwnedImmunity[]
+  anyAbilities  OwnedAnyAbility[]
+  notes         String?
+  hostNotes     String?
+  abilities     OwnedAbility[]
+  perks         OwnedPerk[]
+
+  updatedAt DateTime @default(now()) @updatedAt
+}
+
+model OwnedItem {
+  id           Int  @id @default(autoincrement())
+  inventoryId  Int
+  itemId       Int
+  itemChangeId Int?
+
+  inventory Inventory   @relation(fields: [inventoryId], references: [id])
+  item      Item        @relation(fields: [itemId], references: [id])
+  change    ItemChange? @relation(fields: [itemChangeId], references: [id])
+  notes     String?
+
+  updatedAt DateTime @default(now()) @updatedAt
+}
+
+model OwnedStatus {
+  id          Int @id @default(autoincrement())
+  inventoryId Int
+  statusId    Int
+
+  inventory Inventory @relation(fields: [inventoryId], references: [id])
+  status    Status    @relation(fields: [statusId], references: [id])
+  expiry    DateTime?
+  notes     String?
+
+  updatedAt DateTime @default(now()) @updatedAt
+}
+
+model OwnedImmunity {
+  id          Int @id @default(autoincrement())
+  inventoryId Int
+
+  inventory Inventory @relation(fields: [inventoryId], references: [id])
+  name      String
+  expiry    DateTime?
+
+  updatedAt DateTime @default(now()) @updatedAt
+}
+
+model OwnedAnyAbility {
+  id          Int @id @default(autoincrement())
+  inventoryId Int
+  abilityId   Int
+
+  inventory Inventory @relation(fields: [inventoryId], references: [id])
+  ability   Ability   @relation(fields: [abilityId], references: [id])
+  charges   Int       @default(0)
+
+  updatedAt DateTime @default(now()) @updatedAt
+}
+
+model OwnedAbility {
+  id          Int @id @default(autoincrement())
+  inventoryId Int
+  abilityId   Int
+
+  inventory Inventory @relation(fields: [inventoryId], references: [id])
+  ability   Ability   @relation(fields: [abilityId], references: [id])
+  charges   Int       @default(0)
+  upgrade   String?
+
+  updatedAt DateTime @default(now()) @updatedAt
+}
+
+model OwnedPerk {
+  id          Int @id @default(autoincrement())
+  inventoryId Int
+  perkId      Int
+
+  inventory Inventory @relation(fields: [inventoryId], references: [id])
+  perk      Perk      @relation(fields: [perkId], references: [id])
+  upgrade   String?
+
+  updatedAt DateTime @default(now()) @updatedAt
 }

@@ -1,4 +1,4 @@
-import { Alignment, Rarity } from '@prisma/client';
+import { Ability, Alignment, Rarity, Role } from '@prisma/client';
 import { prisma } from '../database';
 
 interface LuckTable {
@@ -121,7 +121,12 @@ export async function getRandomAnyAbility(luckTable: LuckTable) {
 		itemRarity = 'LEGENDARY';
 	}
 
-	const fetchedAbility = await prisma.ability.findMany({ where: { rarity: itemRarity } });
+	let fetchedAbility = await prisma.ability.findMany({
+		where: {
+			rarity: itemRarity,
+		},
+	});
+
 	const ability = fetchedAbility[Math.floor(Math.random() * fetchedAbility.length)];
 	return ability;
 }
