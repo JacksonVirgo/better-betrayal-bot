@@ -2,6 +2,7 @@ import { Ability } from '@prisma/client';
 import { SelectMenu } from '../../structures/interactions';
 import { prisma } from '../../database';
 import { formatAbilityEmbed } from '../../util/embeds';
+import { getAbility } from '../../util/database';
 
 export default new SelectMenu('view-full-ability-change').onExecute(async (i, cache) => {
 	if (!i.guild) return i.reply({ content: 'You need to be in a server to use this select menu', ephemeral: true });
@@ -19,37 +20,17 @@ export default new SelectMenu('view-full-ability-change').onExecute(async (i, ca
 			id: id,
 		},
 		include: {
-			ability: {
-				include: {
-					role: {
-						select: {
-							name: true,
-						},
-					},
-				},
-			},
+			ability: true,
 		},
 	});
 
 	if (!abilityChange) return i.editReply({ content: 'Ability change not found' });
 
-	const changedAbility: Ability & { role: { name: string } } = {
-		id: abilityChange.ability.id,
-		name: abilityChange.ability.name,
-		rarity: abilityChange.ability.rarity,
-		effect: abilityChange.effect,
-		actionType: abilityChange.ability.actionType,
-		categories: abilityChange.ability.categories,
-		charges: abilityChange.ability.charges,
-		detailedEffect: abilityChange.ability.detailedEffect,
-		isAnyAbility: abilityChange.ability.isAnyAbility,
-		roleId: abilityChange.ability.roleId,
-		updatedAt: abilityChange.ability.updatedAt,
-		role: abilityChange.ability.role,
-		isRoleSpecific: abilityChange.ability.isRoleSpecific,
-	};
+	const changedAbility = await getAbility(abilityChange.ability.name);
+	if (!changedAbility) return i.editReply({ content: 'Ability not found' });
 
 	const embed = formatAbilityEmbed(i.guild, changedAbility);
+
 	embed.setTitle(`${abilityChange.changeType == 'UPGRADE' ? 'Upgraded' : 'Downgraded'} ${abilityChange.ability.name} - ${abilityChange.name}`);
 
 	await i.editReply({ embeds: [embed] });

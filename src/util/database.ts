@@ -88,23 +88,8 @@ export async function getInventory(discordId: string) {
 			discordId,
 		},
 		include: {
-			abilities: true,
-			anyAbilities: {
-				include: {
-					ability: true,
-				},
-			},
-			items: {
-				include: {
-					item: true,
-				},
-			},
-			perks: true,
-			statuses: {
-				include: {
-					status: true,
-				},
-			},
+			anyAbilities: true,
+			statuses: true,
 			immunities: true,
 		},
 	});
@@ -112,12 +97,16 @@ export async function getInventory(discordId: string) {
 	return inventory;
 }
 
-export async function getClosestItem(name: string) {
+export async function getClosestItemName(name: string) {
 	const allItems = await prisma.item.findMany({ where: {}, select: { name: true } });
 	const allItemNames = allItems.map((i) => i.name);
 	const spellCheck = findBestMatch(name, allItemNames);
 	const bestMatch = spellCheck.bestMatch.target;
+	return bestMatch;
+}
 
+export async function getClosestItem(name: string) {
+	const bestMatch = await getClosestItemName(name);
 	const fetchedItem = await prisma.item.findUnique({
 		where: {
 			name: bestMatch,
@@ -128,4 +117,91 @@ export async function getClosestItem(name: string) {
 		item: fetchedItem,
 		correctedName: bestMatch,
 	};
+}
+
+export async function getPerk(name: string) {
+	const perk = await prisma.perk.findUnique({
+		where: {
+			name: name,
+		},
+		include: {
+			perkAttachments: {
+				include: {
+					roles: true,
+				},
+			},
+		},
+	});
+
+	return perk;
+}
+
+export async function getClosestAbilityName(name: string) {
+	const allAbilities = await prisma.ability.findMany({ where: {}, select: { name: true } });
+	const allAbilityNames = allAbilities.map((a) => a.name);
+	const spellCheck = findBestMatch(name, allAbilityNames);
+	const bestMatch = spellCheck.bestMatch.target;
+	return bestMatch;
+}
+
+export async function getAbility(name: string) {
+	const perk = await prisma.ability.findUnique({
+		where: {
+			name: name,
+		},
+		include: {
+			abilityAttachments: {
+				include: {
+					roles: true,
+				},
+			},
+			changes: true,
+		},
+	});
+
+	return perk;
+}
+
+export async function getRole(name: string) {
+	const fetchedRole = await prisma.role.findUnique({
+		where: {
+			name: name,
+		},
+		include: {
+			abilityAttachments: {
+				include: {
+					abilities: true,
+				},
+			},
+			perkAttachments: {
+				include: {
+					perk: true,
+				},
+			},
+		},
+	});
+
+	return fetchedRole;
+}
+
+export async function getClosestImmunityName(name: string) {
+	const bestMatch = await getClosestStatusName(name, ['Death', 'Elimination']);
+	return bestMatch;
+}
+
+export async function getClosestStatusName(name: string, additional: string[] = []) {
+	const allStatuses = await prisma.status.findMany({ where: {}, select: { name: true } });
+	const allStatusNames = [...allStatuses.map((s) => s.name), ...additional];
+	const spellCheck = findBestMatch(name, allStatusNames);
+	const bestMatch = spellCheck.bestMatch.target;
+	return bestMatch;
+}
+export async function getStatus(name: string) {
+	const fetchedStatus = await prisma.status.findUnique({
+		where: {
+			name: name,
+		},
+	});
+
+	return fetchedStatus;
 }

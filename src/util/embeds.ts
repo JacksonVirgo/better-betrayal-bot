@@ -1,8 +1,8 @@
-import { Ability, Item, Perk, Status, Role, AbilityChange, ActionType, PerkCategory, Inventory, OwnedAbility, OwnedAnyAbility, OwnedImmunity, OwnedItem, OwnedPerk, OwnedStatus } from '@prisma/client';
+import { Ability, Item, Perk, Status, Role, AbilityChange, ActionType, PerkCategory, Inventory } from '@prisma/client';
 import { Guild, EmbedBuilder, Colors, ActionRowBuilder, StringSelectMenuBuilder, ColorResolvable, GuildMember, ButtonBuilder } from 'discord.js';
 import { rarityToColor } from './colors';
-import { capitalize } from './string';
-import { formatActionCategory, formatActionType, formatPerkCategory } from './database';
+import { bulkReplaceAll, capitalize, fixWhitespace, replaceAll } from './string';
+import { formatActionCategory, formatActionType, formatPerkCategory, getAbility, getPerk, getRole } from './database';
 import viewAbilityChangeSelect from '../interactions/selectmenu/viewAbilityChange';
 import { getInventory } from './database';
 import { Button } from '../structures/interactions';
@@ -37,50 +37,66 @@ export function generatePerkFooter(perk: Perk) {
 	return footerList;
 }
 
-export function formatRoleEmbed(_guild: Guild, role: Role & { abilities: Ability[]; perks: Perk[] }) {
+export type FullRole = NonNullable<Awaited<ReturnType<typeof getRole>>>;
+export function formatRoleEmbed(_guild: Guild, role: FullRole) {
 	const embed = new EmbedBuilder();
 	embed.setTitle(role.name);
 	embed.setColor(role.alignment === 'GOOD' ? Colors.Green : role.alignment === 'NEUTRAL' ? Colors.Grey : Colors.Red);
 	// embed.setThumbnail(guild.iconURL({ extension: 'png', size: 512 }));
+
+	if (role.name === 'Nephilim') {
+		const desc: string[] = ['Role uses unique mechanics, check with the info server for its types.', '<#1096236057378422915>'];
+		embed.setDescription(desc.join('\n'));
+	}
+
+	const abilities = role.abilityAttachments.map((a) => a.abilities);
+	const perks = role.perkAttachments.map((p) => p.perk);
 
 	embed.addFields([
 		{
 			name: '__Abilities__',
 			value: '\u200B',
 		},
-		...role.abilities
-			.sort((a, b) => a.id - b.id)
+		...abilities
+			.sort((a, b) => a.orderPriority - b.orderPriority)
 			.map((ability) => {
 				const { name, effect, charges } = ability;
 				const footerList = generateAbilityFooter(ability);
 				const categories = footerList.join(' · ');
+				const formattedEffect = fixWhitespace(effect);
 
 				return {
-					name: `**${name} [${charges === -1 ? 'inf' : 'x' + charges}]** - ${categories}`,
-					value: `${effect}`,
+					name: `**${name} [${charges === -1 ? 'inf' : 'x' + charges}]**${!ability.showCategories ? '' : ` - ${categories}`}`,
+					value: `${formattedEffect}`,
 				};
 			}),
 		{
 			name: '__Perks__',
 			value: '\u200B',
 		},
-		...role.perks.map((perk) => {
-			const { name, effect } = perk;
-			const footerList = generatePerkFooter(perk);
-			const categoriesString = footerList.join(' · ');
+		...perks
+			.sort((a, b) => a.orderPriority - b.orderPriority)
+			.map((perk) => {
+				const { name, effect } = perk;
+				const footerList = generatePerkFooter(perk);
+				const categoriesString = footerList.join(' · ');
 
-			return {
-				name: `**${name}**${categoriesString.length > 0 ? ` - ${categoriesString}` : ''}`,
-				value: `${effect}`,
-			};
-		}),
+				const formattedEffect = fixWhitespace(effect);
+				return {
+					name: `**${name}**${categoriesString.length > 0 ? ` - ${categoriesString}` : ''}`,
+					value: `${formattedEffect}`,
+				};
+			}),
 	]);
 
 	return embed;
 }
 
-export function formatRolePlainText(_guild: Guild, role: Role & { abilities: Ability[]; perks: Perk[] }) {
+export function formatRolePlainText(_guild: Guild, role: FullRole) {
 	let result = '```';
+
+	let abilities = role.abilityAttachments.map((a) => a.abilities);
+	let perks = role.perkAttachments.map((p) => p.perk);
 
 	if (role.alignment === 'NEUTRAL') result += 'ini\n[ NEUTRAL ]\n';
 	else result += `diff\n${role.alignment === 'EVIL' ? '- EVIL -' : '+ GOOD +'}\n`;
@@ -88,7 +104,10 @@ export function formatRolePlainText(_guild: Guild, role: Role & { abilities: Abi
 	result += `${role.name}\n\n`;
 	result += 'Abilities:\n';
 
-	for (const ability of role.abilities) {
+	abilities = abilities.sort((a, b) => a.orderPriority - b.orderPriority);
+	perks = perks.sort((a, b) => a.orderPriority - b.orderPriority);
+
+	for (const ability of abilities) {
 		const { name, effect, charges } = ability;
 		let attachment = '';
 		if (ability.rarity) attachment = '*';
@@ -116,13 +135,25 @@ export function formatRolePlainText(_guild: Guild, role: Role & { abilities: Abi
 			footer += formatActionType(ability.actionType);
 		}
 
-		result += `${name} (${charges === -1 ? '∞' : 'x' + charges})${attachment} (${footerValues.join('/')}) - ${effect}\n\n`;
+		const formattedEffect = bulkReplaceAll(effect, [
+			['=', '-'],
+			['\n', '\n'],
+		]);
+
+		result += `${name} (${charges === -1 ? '∞' : 'x' + charges})${attachment}${!ability.showCategories ? '' : ` (${footerValues.join('/')})`} - ${formattedEffect}\n\n`;
 	}
 
 	result += 'Perks:\n';
-	for (const perk of role.perks) {
+	for (const perk of perks) {
 		const { name, effect } = perk;
-		result += `${name} - ${effect}\n\n`;
+		const formattedEffect = bulkReplaceAll(effect, [
+			['=', '-'],
+			['\n', '\n'],
+		]);
+
+		const isToggle = perk.categories.includes('TOGGLABLE');
+
+		result += `${name}${isToggle ? ` (Togglable)` : ''} - ${formattedEffect}\n\n`;
 	}
 
 	result += '\n```';
@@ -167,6 +198,8 @@ export function formatItemEmbed(_guild: Guild, item: Item) {
 
 	let footerList: string[] = [capitalize(item.rarity)];
 
+	if (item.bannedFromItemRain) footerList.push('Cannot be Randed');
+
 	if (item.actionType) {
 		const type = formatActionType(item.actionType);
 		if (type) footerList.push(type);
@@ -200,7 +233,8 @@ export function formatStatusEmbed(_guild: Guild, status: Status) {
 	return embed;
 }
 
-export function formatAbilityEmbed(_guild: Guild, ability: Ability & { role: { name: string } }, showCharges: boolean = false) {
+export type FullAbility = NonNullable<Awaited<ReturnType<typeof getAbility>>>;
+export function formatAbilityEmbed(_guild: Guild, ability: FullAbility, showCharges: boolean = false) {
 	const embed = new EmbedBuilder();
 	embed.setTitle(ability.name);
 	embed.setColor('#CE8964');
@@ -219,12 +253,14 @@ export function formatAbilityEmbed(_guild: Guild, ability: Ability & { role: { n
 	const iconURL = _guild.iconURL({ extension: 'png', size: 1024 });
 	let footer: string | undefined;
 	if (footerList.length > 0) footer = footerList.join(' · ');
-	if (footer) embed.setFooter({ text: footer, iconURL: iconURL ?? undefined });
+
+	if (footer && ability.showCategories) embed.setFooter({ text: footer, iconURL: iconURL ?? undefined });
 
 	return embed;
 }
 
-export function formatPerkEmbed(_guild: Guild, perk: Perk & { role: { name: string } }, extraDetails: boolean = false) {
+export type FullPerk = NonNullable<Awaited<ReturnType<typeof getPerk>>>;
+export function formatPerkEmbed(_guild: Guild, perk: FullPerk) {
 	const embed = new EmbedBuilder();
 	embed.setTitle(perk.name);
 	embed.setColor('#096B72');
@@ -307,63 +343,115 @@ export function formatAbilityChanges(guild: Guild, ability: Ability & { changes:
 	};
 }
 
-type FullInventory = NonNullable<Awaited<ReturnType<typeof getInventory>>>;
-
+export type FullInventory = NonNullable<Awaited<ReturnType<typeof getInventory>>>;
 export function formatInventory(inventory: FullInventory) {
 	const e = new EmbedBuilder();
 	e.setTitle('Inventory');
 	e.setColor('#CE8964');
 
+	const { coins, coinBonus } = inventory;
+	const coinValue = `${coins} [${coinBonus / 100}%] 🪙`;
+
+	e.addFields({ name: 'Coins', value: coinValue, inline: false });
+	// e.addFields(
+	// 	{
+	// 		name: 'Base Abilities',
+	// 		value: `- Absorption [1]\n- Reanimate [1]`,
+	// 		inline: true,
+	// 	},
+	// 	{
+	// 		name: '\u200B',
+	// 		value: '\u200B',
+	// 		inline: true,
+	// 	},
+	// 	{
+	// 		name: 'Base Perks',
+	// 		value: `- Eternal Hunger\n- Impatient Meal\n- Legion [off]`,
+	// 		inline: true,
+	// 	}
+	// );
+
+	const itemValue = inventory.items.length > 0 ? inventory.items.map((item, index) => `- ${item}`).join('\n') : '- None';
+	const anyAbilities = inventory.anyAbilities.length > 0 ? inventory.anyAbilities.map((ability) => `- ${ability.abilityName} [${ability.charges}]`).join('\n') : '- None';
+
 	e.addFields(
 		{
-			name: 'Coins',
-			value: `> ${inventory.coins.toString() ?? 0}`,
+			name: `Items [${inventory.items.length}/${inventory.inventorySize}]`,
+			value: itemValue,
 			inline: true,
 		},
 		{
-			name: 'Coin Bonus',
-			value: `> ${inventory.coinBonus.toString() ?? 0}%`,
+			name: '\u200B',
+			value: '\u200B',
 			inline: true,
 		},
 		{
-			name: 'Luck Bonus',
-			value: `> ${inventory.luckBonus.toString() ?? 0}%`,
+			name: 'Any Abilities',
+			value: anyAbilities,
 			inline: true,
 		}
 	);
 
-	const items: string = inventory.items.length > 0 ? inventory.items.map((item) => item.item.name).join(', ') : 'None';
-	e.addFields({
-		name: `Items [${inventory.items.length}/${inventory.inventorySize}]`,
-		value: `> ${items}`,
-	});
+	const statusValue =
+		inventory.statuses.length > 0
+			? inventory.statuses
+					.map((status) => {
+						const { statusName, expiry, xFold } = status;
+						let response = `- ${xFold ? `${xFold}-fold ` : ''}${statusName}`;
+						if (expiry) response += ` (expires <t:${expiry}:R>)`;
+						return response;
+					})
+					.join('\n')
+					.trim()
+			: '- None';
 
-	const aas = inventory.anyAbilities.length > 0 ? inventory.anyAbilities.map((aa) => aa.ability.name).join(', ') : 'None';
-	e.addFields({
-		name: 'AAs',
-		value: `> ${aas}`,
-	});
+	const immunityValue =
+		inventory.immunities.length > 0
+			? inventory.immunities
+					.map((immunity) => {
+						let result = `- ${immunity.xShot ? `${immunity.xShot}-shot ` : ''}${immunity.name}`;
+						if (immunity.expiry) result += ` (expires <t:${immunity.expiry}:R>)`;
+						return result;
+					})
+					.join('\n')
+			: '- None';
 
-	const statuses = inventory.statuses.length > 0 ? inventory.statuses.map((status) => status.status.name).join(', ') : 'None';
-	e.addFields({
-		name: 'Statuses',
-		value: `> ${statuses}`,
-	});
-
-	const immunities = inventory.immunities.length > 0 ? inventory.immunities.map((immunity) => immunity.name).join(', ') : 'None';
-	e.addFields({
-		name: 'Immunities',
-		value: `> ${immunities}`,
-	});
-
+	e.addFields(
+		{
+			name: 'Statuses',
+			value: statusValue === '' ? '- None' : statusValue,
+			inline: true,
+		},
+		{
+			name: '\u200B',
+			value: '\u200B',
+			inline: true,
+		},
+		{
+			name: 'Immunities',
+			value: immunityValue,
+			inline: true,
+		}
+	);
 	return {
 		embed: e,
 	};
 }
 
-export async function fetchAndFormatInventory(userId: string) {
+type FetchAndFormattedInventory = {
+	embed: EmbedBuilder | null;
+	inventory: FullInventory | null;
+};
+export async function fetchAndFormatInventory(userId: string): Promise<FetchAndFormattedInventory> {
 	const inventory = await getInventory(userId);
-	if (!inventory) return null;
-	const embed = formatInventory(inventory);
-	return embed;
+	if (!inventory)
+		return {
+			embed: null,
+			inventory: null,
+		};
+	const { embed } = formatInventory(inventory);
+	return {
+		embed,
+		inventory: inventory,
+	};
 }

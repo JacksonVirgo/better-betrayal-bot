@@ -25,3 +25,18 @@ export function levenshteinArray(a: string, array: string[]) {
 
 	return { target: currentSelection, distance: lowest };
 }
+
+export function replaceAll(str: string, find: string, replace: string) {
+	return str.split(find).join(replace);
+}
+
+export function bulkReplaceAll(str: string, data: [string, string][]) {
+	for (const [find, replace] of data) {
+		str = replaceAll(str, find, replace);
+	}
+	return str;
+}
+
+export function fixWhitespace(str: string) {
+	return replaceAll(str, '\\n', '\n');
+}

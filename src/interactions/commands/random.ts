@@ -37,25 +37,28 @@ export default newSlashCommand({
 	data,
 	execute: async (i) => {
 		if (!i.guild) return;
+		try {
+			const subcommand = i.options.getSubcommand(true);
 
-		const subcommand = i.options.getSubcommand(true);
+			switch (subcommand) {
+				case 'role':
+					showRandomRole(i);
+					break;
+				case 'deceptionist':
+					showDeceptionistPick(i);
+					break;
+				case 'item':
+					showRandomItem(i);
+					break;
+				case 'dice':
+					showDiceRole(i);
+					break;
 
-		switch (subcommand) {
-			case 'role':
-				showRandomRole(i);
-				break;
-			case 'deceptionist':
-				showDeceptionistPick(i);
-				break;
-			case 'item':
-				showRandomItem(i);
-				break;
-			case 'dice':
-				showDiceRole(i);
-				break;
-
-			default:
-				return i.reply({ content: 'Invalid subcommand', ephemeral: true });
+				default:
+					return i.reply({ content: 'Invalid subcommand', ephemeral: true });
+			}
+		} catch (err) {
+			console.log(`[ERROR RANDOM COMMAND]`, err);
 		}
 	},
 });
@@ -80,15 +83,9 @@ async function showDeceptionistPick(i: ChatInputCommandInteraction) {
 	if (!(randomGood && randomNeutral && randomEvil)) return i.reply({ content: 'Failed to fetch one of each alignment', ephemeral: true });
 
 	const row = new ActionRowBuilder<ButtonBuilder>();
-	row.addComponents(
-		new ButtonBuilder().setCustomId(viewRole.createCustomID(randomGood.name)).setLabel(randomGood.name).setStyle(ButtonStyle.Success)
-	);
-	row.addComponents(
-		new ButtonBuilder().setCustomId(viewRole.createCustomID(randomNeutral.name)).setLabel(randomNeutral.name).setStyle(ButtonStyle.Secondary)
-	);
-	row.addComponents(
-		new ButtonBuilder().setCustomId(viewRole.createCustomID(randomEvil.name)).setLabel(randomEvil.name).setStyle(ButtonStyle.Danger)
-	);
+	row.addComponents(new ButtonBuilder().setCustomId(viewRole.createCustomID(randomGood.name)).setLabel(randomGood.name).setStyle(ButtonStyle.Success));
+	row.addComponents(new ButtonBuilder().setCustomId(viewRole.createCustomID(randomNeutral.name)).setLabel(randomNeutral.name).setStyle(ButtonStyle.Secondary));
+	row.addComponents(new ButtonBuilder().setCustomId(viewRole.createCustomID(randomEvil.name)).setLabel(randomEvil.name).setStyle(ButtonStyle.Danger));
 
 	return i.reply({ content: 'Press the appropriate buttons to see the full role-cards', components: [row], ephemeral: hidden });
 }

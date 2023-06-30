@@ -45,19 +45,23 @@ export default newSlashCommand({
 	execute: async (i) => {
 		if (!i.guild) return;
 
-		const subcommand = i.options.getSubcommand(true);
+		try {
+			const subcommand = i.options.getSubcommand(true);
 
-		switch (subcommand) {
-			case 'table':
-				return showLuckTable(i);
-			case 'itemrain':
-				return calculateItemRain(i);
-			case 'powerdrop':
-				return calculatePowerDrop(i);
-			case 'carepackage':
-				return calculateCarePackage(i);
-			default:
-				return i.reply({ content: 'Invalid subcommand', ephemeral: true });
+			switch (subcommand) {
+				case 'table':
+					return showLuckTable(i);
+				case 'itemrain':
+					return calculateItemRain(i);
+				case 'powerdrop':
+					return calculatePowerDrop(i);
+				case 'carepackage':
+					return calculateCarePackage(i);
+				default:
+					return i.reply({ content: 'Invalid subcommand', ephemeral: true });
+			}
+		} catch (err) {
+			console.log(`[ERROR LUCK COMMAND]`, err);
 		}
 	},
 });

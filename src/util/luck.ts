@@ -1,5 +1,6 @@
 import { Ability, Alignment, Rarity, Role } from '@prisma/client';
 import { prisma } from '../database';
+import { getRole } from './database';
 
 interface LuckTable {
 	common: number;
@@ -96,7 +97,15 @@ export async function getRandomItem(luckTable?: LuckTable) {
 		itemRarity = 'MYTHICAL';
 	}
 
-	const fetchedItem = await prisma.item.findMany({ where: { rarity: itemRarity } });
+	const fetchedItem = await prisma.item.findMany({
+		where: {
+			rarity: itemRarity,
+			bannedFromItemRain: {
+				not: true,
+			},
+		},
+	});
+
 	const item = fetchedItem[Math.floor(Math.random() * fetchedItem.length)];
 	return item;
 }
@@ -143,15 +152,7 @@ export async function getRandomRole(alignment?: Alignment) {
 
 	const randomRoleName = allRoles[Math.floor(Math.random() * allRoles.length)].name;
 
-	const role = await prisma.role.findUnique({
-		where: {
-			name: randomRoleName,
-		},
-		include: {
-			abilities: true,
-			perks: true,
-		},
-	});
+	const role = await getRole(randomRoleName);
 
 	return role;
 }

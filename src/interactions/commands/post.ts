@@ -1,7 +1,7 @@
-import { ChannelType, ChatInputCommandInteraction, ColorResolvable, EmbedBuilder, SlashCommandBuilder } from 'discord.js';
+import { AttachmentBuilder, ChannelType, ChatInputCommandInteraction, ColorResolvable, EmbedBuilder, SlashCommandBuilder } from 'discord.js';
 import { newSlashCommand } from '../../structures/BotClient';
 import { prisma } from '../../database';
-import { Alignment, Item } from '@prisma/client';
+import { Ability, Alignment, Item, Rarity } from '@prisma/client';
 import { RarityColors } from '../../util/colors';
 import { formatRoleEmbed } from '../../util/embeds';
 import { formatActionType, formatActionCategory } from '../../util/database';
@@ -10,10 +10,16 @@ import { capitalize } from '../../util/string';
 const data = new SlashCommandBuilder().setName('post').setDescription('Staff only. Posts important stuff idk');
 
 data.addStringOption((opt) =>
-	opt.setName('thing').setDescription('The thing to post').setRequired(true).setChoices({
-		name: 'Item Shop',
-		value: 'itemshop',
-	})
+	opt.setName('thing').setDescription('The thing to post').setRequired(true).setChoices(
+		{
+			name: 'Item Shop',
+			value: 'itemshop',
+		},
+		{
+			name: 'AAs',
+			value: 'aa',
+		}
+	)
 );
 
 export default newSlashCommand({
@@ -21,12 +27,16 @@ export default newSlashCommand({
 	execute: async (i) => {
 		if (!i.guild) return i.reply({ content: 'This command can only be used in a server', ephemeral: true });
 
-		const thing = i.options.getString('thing', true);
+		try {
+			const thing = i.options.getString('thing', true);
 
-		if (thing === 'itemshop') {
-			return postItemShop(i);
-		} else if (thing === 'rolelist') {
-			return postRoleList(i);
+			if (thing === 'itemshop') {
+				return postItemShop(i);
+			} else if (thing === 'aa') {
+				return postAAs(i);
+			}
+		} catch (err) {
+			console.log(`[ERROR POST COMMAND]`, err);
 		}
 	},
 });
@@ -183,56 +193,56 @@ async function postItemShop(i: ChatInputCommandInteraction) {
 	// await i.deleteReply();
 }
 
-async function postRoleList(i: ChatInputCommandInteraction) {
-	const channel = i.channel;
-	if (!channel) return;
-	if (channel.type !== ChannelType.GuildText) return;
+async function postAAs(i: ChatInputCommandInteraction) {
 	if (!i.guild) return;
+	const iconURL = i.guild.iconURL({ extension: 'png', size: 1024 });
 
-	const parent = channel.parent;
-	if (!parent) return;
+	await i.deferReply({ ephemeral: false });
 
-	await i.reply({ content: 'Going', ephemeral: true });
+	const commons = await getAnyAbilities('COMMON');
+	const uncommons = await getAnyAbilities('UNCOMMON');
+	const rares = await getAnyAbilities('RARE');
+	const epics = await getAnyAbilities('EPIC');
+	const legendaries = await getAnyAbilities('LEGENDARY');
 
-	const forum = await parent.children.create({
-		name: 'role-list',
-		type: ChannelType.GuildForum,
-	});
+	await i.editReply({ files: [commons, uncommons, rares, epics, legendaries] });
+}
 
-	forum.setAvailableTags([
-		{
-			name: Alignment.GOOD,
-			id: 'good',
+async function getAnyAbilities(rarity: Rarity) {
+	const anyAbilities = await prisma.ability.findMany({
+		where: {
+			rarity: rarity,
 		},
-		{
-			name: Alignment.NEUTRAL,
-			id: 'neutral',
-		},
-		{
-			name: Alignment.EVIL,
-			id: 'evil',
-		},
-	]);
-
-	// Iterate over all roles. 5 at a time through pagination and create a forum post for each
-
-	const allRoles = await prisma.role.findMany({
-		where: {},
 		include: {
-			abilities: true,
-			perks: true,
+			abilityAttachments: {
+				include: {
+					roles: {
+						select: {
+							name: true,
+						},
+					},
+				},
+			},
 		},
 	});
 
-	for (let index = 0; index < allRoles.length; index++) {
-		const role = allRoles[index];
-		const embed = formatRoleEmbed(i.guild, role);
-		await forum.threads.create({
-			name: allRoles[index].name,
-			message: {
-				embeds: [embed],
-			},
-			appliedTags: [role.alignment.toLowerCase()],
-		});
+	const abilities: string[] = [];
+	const roleSpecific: string[] = [];
+
+	for (const ability of anyAbilities) {
+		if (!ability.isRoleSpecific) {
+			abilities.push(`${ability.name} - ${ability.effect}`);
+			continue;
+		}
+
+		if (!ability.abilityAttachments) continue;
+		const roles = ability.abilityAttachments.roles.map((r) => r.name);
+		if (roles[0]) roleSpecific.push(`${ability.name} [${roles[0]}]`);
 	}
+
+	const value = `${capitalize(rarity)} AAs\n\n` + abilities.join('\n\n') + '\n\n' + roleSpecific.join('\n');
+
+	const attachment = new AttachmentBuilder(Buffer.from(value)).setName('commons.txt');
+
+	return attachment;
 }
