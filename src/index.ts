@@ -1,10 +1,11 @@
-import { REST } from 'discord.js';
 import config from './config';
 import { BotClient } from './structures/BotClient';
+import { updateCache } from './database';
 
 export const client = new BotClient(config.DISCORD_CLIENT_ID, config.DISCORD_TOKEN);
 
 (async () => {
+	await updateCache();
 	await client.login();
 	tick(client);
 })();

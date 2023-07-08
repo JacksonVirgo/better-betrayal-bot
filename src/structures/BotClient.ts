@@ -1,25 +1,22 @@
-import { ChatInputCommandInteraction, Client, Collection, Events, GatewayIntentBits, REST, Routes, SlashCommandBuilder } from 'discord.js';
+import { AutocompleteInteraction, ChannelType, ChatInputCommandInteraction, Client, Collection, Events, GatewayIntentBits, Interaction, Message, REST, Routes, SlashCommandBuilder } from 'discord.js';
 import * as path from 'path';
 import * as fs from 'fs';
 import { Button, Event, Modal, SelectMenu } from './interactions';
 import OnClientReady from '../interactions/events/clientReady';
 import OnInteraction from '../interactions/events/onInteraction';
 import { ContextMenuCommandBuilder } from 'discord.js';
+import { prisma } from '../database';
+import { fetchAndFormatInventory } from '../util/embeds';
 
 export const DEFAULT_INTENTS = {
-	intents: [
-		GatewayIntentBits.Guilds,
-		GatewayIntentBits.GuildMembers,
-		GatewayIntentBits.GuildMessages,
-		GatewayIntentBits.MessageContent,
-		GatewayIntentBits.GuildIntegrations,
-	],
+	intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.GuildIntegrations],
 };
 
 export const slashCommands: Collection<string, SlashCommand> = new Collection();
 export interface SlashCommand {
 	data: SlashCommandBuilder;
 	execute: (i: ChatInputCommandInteraction) => any | Promise<any>;
+	autocomplete?: (i: AutocompleteInteraction) => any | Promise<any>;
 }
 
 export async function newSlashCommand(cmd: SlashCommand) {

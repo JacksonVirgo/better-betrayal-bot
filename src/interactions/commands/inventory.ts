@@ -3,6 +3,7 @@ import { newSlashCommand } from '../../structures/BotClient';
 import { prisma } from '../../database';
 import { FullInventory, fetchAndFormatInventory, formatInventory } from '../../util/embeds';
 import { getClosestAbilityName, getClosestImmunityName, getClosestItemName, getClosestStatusName, getInventory } from '../../util/database';
+import { effect } from 'zod';
 
 const data = new SlashCommandBuilder().setName('inventory').setDescription('Command to manage inventories');
 
@@ -35,9 +36,18 @@ data.addSubcommand((sub) =>
 		.setName('set')
 		.setDescription('Set a few core values of an inventory')
 		.addUserOption((opt) => opt.setName('user').setDescription('The user to change the values for').setRequired(true))
-		.addIntegerOption((opt) => opt.setName('coins').setDescription('The amount of coins to set').setRequired(false))
+		.addIntegerOption((opt) => opt.setName('setcoins').setDescription('The amount of coins to set').setRequired(false))
+		.addIntegerOption((opt) => opt.setName('addcoins').setDescription('The amount of coins to add').setRequired(false))
+		.addIntegerOption((opt) => opt.setName('removecoins').setDescription('The amount of coins to remove').setRequired(false))
 		.addIntegerOption((opt) => opt.setName('itemlimit').setDescription('The item limit to set').setRequired(false))
 		.addIntegerOption((opt) => opt.setName('coinbonus').setDescription('The coin bonus % to set. Percent without the period. 500 = 5%.').setRequired(false))
+);
+
+data.addSubcommand((sub) =>
+	sub
+		.setName('hostnotes')
+		.setDescription('View or edit the host notes for an inventory')
+		.addUserOption((usr) => usr.setName('player').setDescription('Player to access the host notes for'))
 );
 
 data.addSubcommandGroup((group) =>
@@ -162,10 +172,40 @@ data.addSubcommandGroup((group) =>
 		)
 );
 
+data.addSubcommandGroup((group) =>
+	group
+		.setName('effect')
+		.setDescription('Effect related commands')
+		.addSubcommand((sub) =>
+			sub
+				.setName('add')
+				.setDescription('Add an effect to an inventory')
+				.addUserOption((opt) => opt.setName('user').setDescription('The user the inventory belongs to').setRequired(true))
+				.addStringOption((opt) => opt.setName('effect').setDescription('The name of the effect to add').setRequired(true))
+				.addIntegerOption((opt) => opt.setName('expiry').setDescription('Discord timestamp (number only).').setRequired(false))
+		)
+		.addSubcommand((sub) =>
+			sub
+				.setName('remove')
+				.setDescription('Remove an effect from an inventory')
+				.addUserOption((opt) => opt.setName('user').setDescription('The user the inventory belongs to').setRequired(true))
+				.addStringOption((opt) => opt.setName('effect').setDescription('The name of the immunity').setRequired(true))
+		)
+		.addSubcommand((sub) =>
+			sub
+				.setName('update')
+				.setDescription('Update an effect from an inventory')
+				.addUserOption((opt) => opt.setName('user').setDescription('The user the inventory belongs to').setRequired(true))
+				.addStringOption((opt) => opt.setName('effect').setDescription('The name of the effect').setRequired(true))
+				.addIntegerOption((opt) => opt.setName('expiry').setDescription('Discord timestamp (number only).').setRequired(false))
+		)
+);
+
 export default newSlashCommand({
 	data,
 	execute: async (i) => {
 		if (!i.guild) return i.reply({ content: 'This command can only be used in a server', ephemeral: true });
+		if (i.guildId != '1096058997477490861') return i.reply({ content: 'This command can only be used in the official server', ephemeral: true });
 
 		try {
 			const subcommand = i.options.getSubcommand(true);
@@ -231,6 +271,19 @@ export default newSlashCommand({
 						return await removeImmunity(i);
 					case 'update':
 						return await updateImmunity(i);
+					default:
+						return await i.reply({ content: 'Invalid subcommand', ephemeral: true });
+				}
+			}
+
+			if (subcommandGroup === 'effect') {
+				switch (subcommand) {
+					case 'add':
+						return await addEffect(i);
+					case 'remove':
+						return await removeEffect(i);
+					case 'update':
+						return await updateEffect(i);
 					default:
 						return await i.reply({ content: 'Invalid subcommand', ephemeral: true });
 				}
@@ -345,30 +398,38 @@ async function removeInventory(i: ChatInputCommandInteraction) {
 
 async function setMiscData(i: ChatInputCommandInteraction) {
 	const user = i.options.getUser('user', true);
-	const coins = i.options.getInteger('coins', false);
+	const coins = i.options.getInteger('setcoins', false);
+	const addCoins = i.options.getInteger('addcoins', false);
+	const removeCoins = i.options.getInteger('removecoins', false);
 	const itemLimit = i.options.getInteger('itemlimit', false);
 	const coinBonus = i.options.getInteger('coinbonus', false);
+
+	if (coins && addCoins) return await i.reply({ content: 'You cannot set and add coins at the same time', ephemeral: true });
+	if (coins && removeCoins) return await i.reply({ content: 'You cannot set and remove coins at the same time', ephemeral: true });
+
+	const finalAddCoins = addCoins ?? 0;
+	const finalRemoveCoins = removeCoins ?? 0;
 
 	const inventory = await getInventory(user.id);
 	if (!inventory) return await i.reply({ content: 'That user does not have an inventory', ephemeral: true });
 
 	await i.deferReply({ ephemeral: false });
 
-	await prisma.inventory.update({
+	const saved = await prisma.inventory.update({
 		where: {
 			id: inventory.id,
 		},
 		data: {
-			coins: coins ?? undefined,
+			coins: coins ? coins : inventory.coins + finalAddCoins - finalRemoveCoins,
 			inventorySize: itemLimit ?? undefined,
 			coinBonus: coinBonus ?? undefined,
 		},
 	});
 
 	const changes = [];
-	if (coins) changes.push(`- Coins: ${coins} from ${inventory.coins}`);
-	if (itemLimit) changes.push(`- Item Limit: ${itemLimit} from ${inventory.inventorySize}`);
-	if (coinBonus) changes.push(`- Coin Bonus: ${coinBonus} (aka ${coinBonus / 100}%) from ${inventory.coinBonus} (aka ${inventory.coinBonus / 100}%)`);
+	if (inventory.coins != saved.coins) changes.push(`- Coins: ${saved.coins} from ${inventory.coins}`);
+	if (inventory.inventorySize != saved.inventorySize) changes.push(`- Item Limit: ${saved.inventorySize} from ${inventory.inventorySize}`);
+	if (inventory.coinBonus != saved.coinBonus) changes.push(`- Coin Bonus: ${saved.coinBonus} (aka ${saved.coinBonus / 100}%) from ${inventory.coinBonus} (aka ${inventory.coinBonus / 100}%)`);
 
 	await updatePinnedInventory(i, {
 		channelId: inventory.channelId,
@@ -437,7 +498,7 @@ async function removeItem(i: ChatInputCommandInteraction) {
 	}
 
 	try {
-		await prisma.inventory.update({
+		const updatedInventory = await prisma.inventory.update({
 			where: {
 				discordId: user.id,
 			},
@@ -455,7 +516,7 @@ async function removeItem(i: ChatInputCommandInteraction) {
 		});
 
 		return await i.editReply({
-			content: `### Changed <@${user.id}>'s Inventory\n- Removed Item: \`${itemName}\` so now their inventory size is now ${inventory.items.length + 1}/${inventory.inventorySize}`,
+			content: `### Changed <@${user.id}>'s Inventory\n- Removed Item: \`${itemName}\` so now their inventory size is now ${updatedInventory.items.length}/${inventory.inventorySize}`,
 		});
 	} catch (err) {
 		console.log(err);
@@ -772,6 +833,7 @@ async function updateStatus(i: ChatInputCommandInteraction) {
 		return await i.editReply({ content: 'An error occured' });
 	}
 }
+
 async function addImmunity(i: ChatInputCommandInteraction) {
 	const user = i.options.getUser('user', true);
 	const immunity = i.options.getString('immunity', true);
@@ -920,6 +982,155 @@ async function updateImmunity(i: ChatInputCommandInteraction) {
 		if (xshot) changes.push(`- Changed x-shot of \`${immunityName}\` from ${oldXShot ? `${oldXShot}-shot` : 'none'} to ${xshot}-shot`);
 
 		let content = `### Changed <@${user.id}>'s Inventory\n- Uppdate immunity \`${immunityName}\``;
+
+		if (changes.length > 0) {
+			content += '\n';
+			content += changes.join('\n');
+		}
+		return await i.editReply({
+			content,
+		});
+	} catch (err) {
+		console.log(err);
+		return await i.editReply({ content: 'An error occured' });
+	}
+}
+
+async function addEffect(i: ChatInputCommandInteraction) {
+	const user = i.options.getUser('user', true);
+	const effect = i.options.getString('effect', true);
+	const expiry = i.options.getInteger('expiry', false) ?? undefined;
+
+	const inventory = await getInventory(user.id);
+	if (!inventory) return await i.reply({ content: 'That user does not have an inventory', ephemeral: true });
+
+	await i.deferReply({ ephemeral: false });
+
+	let effectName = effect;
+	let effectExists = false;
+	for (const a of inventory.effects) {
+		if (a.name == effectName) effectExists = true;
+	}
+
+	if (effectExists) return await i.editReply({ content: 'Effect with this name already exists in their inventory. Either remove it, or use a different name' });
+
+	try {
+		await prisma.afflictedEffect.create({
+			data: {
+				name: effectName,
+				expiry: expiry ?? undefined,
+				inventoryId: inventory.id,
+			},
+		});
+
+		await updatePinnedInventory(i, {
+			channelId: inventory.channelId,
+			messageId: inventory.messageId ?? undefined,
+			discordId: inventory.discordId,
+		});
+
+		let content = `### Changed <@${user.id}>'s Inventory\n- Added effect: \`${effectName}\``;
+		if (expiry) content += `- Expires <t:${expiry}:R>`;
+
+		return await i.editReply({
+			content,
+		});
+	} catch (err) {
+		console.log(err);
+		return await i.editReply({ content: 'An error occured' });
+	}
+}
+
+async function removeEffect(i: ChatInputCommandInteraction) {
+	const user = i.options.getUser('user', true);
+	const effect = i.options.getString('effect', true);
+
+	const inventory = await getInventory(user.id);
+	if (!inventory) return await i.reply({ content: 'That user does not have an inventory', ephemeral: true });
+
+	await i.deferReply({ ephemeral: false });
+
+	let effectId: number | undefined;
+	let oldExpiry: number | undefined;
+	let oldDetails: string | undefined;
+	for (const a of inventory.effects) {
+		if (a.name == effect) {
+			effectId = a.id;
+			oldExpiry = a.expiry ?? undefined;
+			oldDetails = a.details ?? undefined;
+		}
+	}
+
+	if (!effectId) return await i.editReply({ content: 'There is no effect to remove with this request' });
+
+	try {
+		await prisma.afflictedEffect.delete({
+			where: {
+				id: effectId,
+			},
+		});
+
+		await updatePinnedInventory(i, {
+			channelId: inventory.channelId,
+			messageId: inventory.messageId ?? undefined,
+			discordId: inventory.discordId,
+		});
+
+		let content = `### Changed <@${user.id}>'s Inventory\n- Removed effect: \`${effect}\``;
+		if (oldExpiry) content += ` which expired <t:${oldExpiry}:R>`;
+		if (oldDetails) content += ` with details: \`${oldDetails}\``;
+
+		return await i.editReply({
+			content,
+		});
+	} catch (err) {
+		console.log(err);
+		return await i.editReply({ content: 'An error occured' });
+	}
+}
+
+async function updateEffect(i: ChatInputCommandInteraction) {
+	const user = i.options.getUser('user', true);
+	const effect = i.options.getString('effect', true);
+	const expiry = i.options.getInteger('expiry', false) ?? undefined;
+
+	const inventory = await getInventory(user.id);
+	if (!inventory) return await i.reply({ content: 'That user does not have an inventory', ephemeral: true });
+
+	await i.deferReply({ ephemeral: false });
+
+	let effectId: number | undefined;
+	let oldExpiry: number | undefined;
+	let oldDetails: string | undefined;
+	for (const a of inventory.effects) {
+		if (a.name == effect) {
+			effectId = a.id;
+			oldExpiry = a.expiry ?? undefined;
+			oldDetails = a.details ?? undefined;
+		}
+	}
+
+	if (!effectId) return await i.editReply({ content: 'There is no effect to remove with this request' });
+
+	try {
+		await prisma.afflictedEffect.update({
+			where: {
+				id: effectId,
+			},
+			data: {
+				expiry: expiry ?? undefined,
+			},
+		});
+		await updatePinnedInventory(i, {
+			channelId: inventory.channelId,
+			messageId: inventory.messageId ?? undefined,
+			discordId: inventory.discordId,
+		});
+
+		const changes: string[] = [];
+		if (expiry) changes.push(`- Changed expiry of \`${effect}\` from ${oldExpiry ? `<t:${oldExpiry}:R>` : 'none'} to <t:${expiry}:R>`);
+
+		let content = `### Changed <@${user.id}>'s Inventory\n- Uppdate immunity \`${effect}\``;
 
 		if (changes.length > 0) {
 			content += '\n';

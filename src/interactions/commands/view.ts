@@ -1,19 +1,21 @@
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle, ChatInputCommandInteraction, EmbedBuilder, SlashCommandBuilder } from 'discord.js';
+import { ActionRowBuilder, AutocompleteInteraction, ButtonBuilder, ButtonStyle, ChatInputCommandInteraction, EmbedBuilder, SlashCommandBuilder } from 'discord.js';
 import { newSlashCommand } from '../../structures/BotClient';
 import { formatAbilityEmbed, formatInventory, formatItemEmbed, formatPerkEmbed, formatRoleEmbed, formatRolePlainText, formatStatusEmbed } from '../../util/embeds';
 import viewRoleButton from '../buttons/viewRole';
-import { prisma } from '../../database';
+import { cache, prisma } from '../../database';
 import { findBestMatch } from 'string-similarity';
 import viewChangesButton from '../buttons/viewChanges';
 import { getAbility, getClosestItem, getClosestStatusName, getInventory, getPerk, getRole, getStatus } from '../../util/database';
 
 const data = new SlashCommandBuilder().setName('view').setDescription('View information about Betrayal');
 
+let loadedAbilityNames: string[] | undefined;
+
 data.addSubcommand((sub) =>
 	sub
 		.setName('role')
 		.setDescription('View a role')
-		.addStringOption((opt) => opt.setName('name').setDescription('The role to view').setRequired(true))
+		.addStringOption((opt) => opt.setName('name').setDescription('The role to view').setRequired(true).setAutocomplete(true))
 		.addBooleanOption((opt) => opt.setName('hidden').setDescription('To make this for only you to see'))
 		.addBooleanOption((opt) => opt.setName('plaintext').setDescription('View the role in plaintext'))
 );
@@ -21,28 +23,28 @@ data.addSubcommand((sub) =>
 	sub
 		.setName('ability')
 		.setDescription('View an ability')
-		.addStringOption((opt) => opt.setName('name').setDescription('The ability to view').setRequired(true))
+		.addStringOption((opt) => opt.setName('name').setDescription('The ability to view').setRequired(true).setAutocomplete(true))
 		.addBooleanOption((opt) => opt.setName('hidden').setDescription('To make this for only you to see'))
 );
 data.addSubcommand((sub) =>
 	sub
 		.setName('perk')
 		.setDescription('View a perk')
-		.addStringOption((opt) => opt.setName('name').setDescription('The perk to view').setRequired(true))
+		.addStringOption((opt) => opt.setName('name').setDescription('The perk to view').setRequired(true).setAutocomplete(true))
 		.addBooleanOption((opt) => opt.setName('hidden').setDescription('To make this for only you to see'))
 );
 data.addSubcommand((sub) =>
 	sub
 		.setName('item')
 		.setDescription('View an item')
-		.addStringOption((opt) => opt.setName('name').setDescription('The item to view').setRequired(true))
+		.addStringOption((opt) => opt.setName('name').setDescription('The item to view').setRequired(true).setAutocomplete(true))
 		.addBooleanOption((opt) => opt.setName('hidden').setDescription('To make this for only you to see'))
 );
 data.addSubcommand((sub) =>
 	sub
 		.setName('status')
 		.setDescription('View a specific status')
-		.addStringOption((opt) => opt.setName('name').setDescription('The status to view').setRequired(true))
+		.addStringOption((opt) => opt.setName('name').setDescription('The status to view').setRequired(true).setAutocomplete(true))
 		.addBooleanOption((opt) => opt.setName('hidden').setDescription('To make this for only you to see'))
 );
 
@@ -79,6 +81,37 @@ export default newSlashCommand({
 			}
 		} catch (err) {
 			console.log(`[ERROR VIEW COMMAND]`, err);
+		}
+	},
+	autocomplete: async (i: AutocompleteInteraction) => {
+		const focusedValue = i.options.getFocused();
+
+		const subcommand = i.options.getSubcommand(false);
+		if (!subcommand) return await i.respond([]);
+
+		switch (subcommand) {
+			case 'role':
+				let allMatchingRoles = cache.roles.filter((role) => role.toLowerCase().startsWith(focusedValue.toLowerCase()));
+				allMatchingRoles = allMatchingRoles.splice(0, Math.min(allMatchingRoles.length, 25));
+				return await i.respond(allMatchingRoles.map((match) => ({ name: match, value: match })));
+			case 'ability':
+				let allMatchingAbilities = cache.abilities.filter((ability) => ability.toLowerCase().startsWith(focusedValue.toLowerCase()));
+				allMatchingAbilities = allMatchingAbilities.splice(0, Math.min(allMatchingAbilities.length, 25));
+				return await i.respond(allMatchingAbilities.map((match) => ({ name: match, value: match })));
+			case 'perk':
+				let allMatchingPerks = cache.perks.filter((perk) => perk.toLowerCase().startsWith(focusedValue.toLowerCase()));
+				allMatchingPerks = allMatchingPerks.splice(0, Math.min(allMatchingPerks.length, 25));
+				return await i.respond(allMatchingPerks.map((match) => ({ name: match, value: match })));
+			case 'item':
+				let allMatchingItems = cache.items.filter((item) => item.toLowerCase().startsWith(focusedValue.toLowerCase()));
+				allMatchingItems = allMatchingItems.splice(0, Math.min(allMatchingItems.length, 25));
+				return await i.respond(allMatchingItems.map((match) => ({ name: match, value: match })));
+			case 'status':
+				let allMatchingStatuses = cache.statuses.filter((status) => status.toLowerCase().startsWith(focusedValue.toLowerCase()));
+				allMatchingStatuses = allMatchingStatuses.splice(0, Math.min(allMatchingStatuses.length, 25));
+				return await i.respond(allMatchingStatuses.map((match) => ({ name: match, value: match })));
+			default:
+				return await i.respond([]);
 		}
 	},
 });

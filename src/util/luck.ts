@@ -134,6 +134,14 @@ export async function getRandomAnyAbility(luckTable: LuckTable) {
 		where: {
 			rarity: itemRarity,
 		},
+		include: {
+			abilityAttachments: {
+				include: {
+					roles: true,
+				},
+			},
+			changes: true,
+		},
 	});
 
 	const ability = fetchedAbility[Math.floor(Math.random() * fetchedAbility.length)];

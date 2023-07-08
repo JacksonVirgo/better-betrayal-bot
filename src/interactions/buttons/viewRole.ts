@@ -8,8 +8,6 @@ export default new Button('view-role').setButton(new ButtonBuilder().setLabel('V
 	if (!cache) return i.reply({ content: 'This button is invalid', ephemeral: true });
 	if (!i.guild) return i.reply({ content: 'You need to be in a server to use this button', ephemeral: true });
 
-	console.log(cache);
-
 	try {
 		const role = await getRole(cache);
 		if (!role) return i.reply({ content: `Role ${cache} not found`, ephemeral: true });

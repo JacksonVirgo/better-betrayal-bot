@@ -26,6 +26,7 @@ export default newSlashCommand({
 	data,
 	execute: async (i) => {
 		if (!i.guild) return i.reply({ content: 'This command can only be used in a server', ephemeral: true });
+		if (i.guildId != '1096058997477490861') return i.reply({ content: 'This command can only be used in the official server', ephemeral: true });
 
 		try {
 			const thing = i.options.getString('thing', true);
@@ -180,15 +181,15 @@ async function postItemShop(i: ChatInputCommandInteraction) {
 
 	if (!channel) return;
 
-	const ephemeral = true;
+	const ephemeral = false;
 
-	await i.followUp({ embeds: [commonEmbed], ephemeral: ephemeral });
-	await i.followUp({ embeds: [uncommonEmbed], ephemeral: ephemeral });
-	await i.followUp({ embeds: [rareEmbed], ephemeral: ephemeral });
-	await i.followUp({ embeds: [epicEmbed], ephemeral: ephemeral });
-	await i.followUp({ embeds: [legendaryEmbed], ephemeral: ephemeral });
-	await i.followUp({ embeds: [mythicEmbed], ephemeral: ephemeral });
-	await i.followUp({ embeds: [unique], ephemeral: ephemeral });
+	await channel.send({ embeds: [commonEmbed] });
+	await channel.send({ embeds: [uncommonEmbed] });
+	await channel.send({ embeds: [rareEmbed] });
+	await channel.send({ embeds: [epicEmbed] });
+	await channel.send({ embeds: [legendaryEmbed] });
+	await channel.send({ embeds: [mythicEmbed] });
+	await channel.send({ embeds: [unique] });
 
 	// await i.deleteReply();
 }

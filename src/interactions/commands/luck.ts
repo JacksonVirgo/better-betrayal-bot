@@ -3,6 +3,7 @@ import { newSlashCommand } from '../../structures/BotClient';
 import { getLuckTable, getRandomAnyAbility, getRandomItem } from '../../util/luck';
 import { prisma } from '../../database';
 import { findBestMatch } from 'string-similarity';
+import { formatAbilityEmbed, formatItemEmbed } from '../../util/embeds';
 
 const data = new SlashCommandBuilder().setName('luck').setDescription('View the luck table for a specific luck value');
 
@@ -40,6 +41,22 @@ data.addSubcommand((sub) =>
 		.addBooleanOption((opt) => opt.setName('hidden').setDescription('To make this for only you to see'))
 );
 
+data.addSubcommand((sub) =>
+	sub
+		.setName('item')
+		.setDescription('Get a random item from the luck table. For a pure random result, use /random item')
+		.addIntegerOption((opt) => opt.setName('luck').setDescription('The luck to use to calculate.').setRequired(true))
+		.addBooleanOption((opt) => opt.setName('hidden').setDescription('To make this for only you to see'))
+);
+
+data.addSubcommand((sub) =>
+	sub
+		.setName('aa')
+		.setDescription('Get a random AA from the luck table. For a pure random result, use /random ability')
+		.addIntegerOption((opt) => opt.setName('luck').setDescription('The luck to use to calculate.').setRequired(true))
+		.addBooleanOption((opt) => opt.setName('hidden').setDescription('To make this for only you to see'))
+);
+
 export default newSlashCommand({
 	data,
 	execute: async (i) => {
@@ -57,6 +74,10 @@ export default newSlashCommand({
 					return calculatePowerDrop(i);
 				case 'carepackage':
 					return calculateCarePackage(i);
+				case 'item':
+					return calculateItem(i);
+				case 'aa':
+					return calculateAA(i);
 				default:
 					return i.reply({ content: 'Invalid subcommand', ephemeral: true });
 			}
@@ -221,6 +242,37 @@ async function calculateCarePackage(i: ChatInputCommandInteraction) {
 			text: 'This contains role specific abilities.',
 		});
 	}
+
+	return i.editReply({ embeds: [embed] });
+}
+
+async function calculateItem(i: ChatInputCommandInteraction) {
+	if (!i.guild) return;
+	const luck = i.options.getInteger('luck') ?? 0;
+	const hidden = i.options.getBoolean('hidden') ?? false;
+	await i.deferReply({ ephemeral: hidden });
+
+	const luckTable = getLuckTable(luck);
+	const item = await getRandomItem(luckTable);
+	const embed = formatItemEmbed(i.guild, item);
+	embed.setTitle(`Random Item: ${luck} Luck - ${item.name}`);
+
+	return i.editReply({ embeds: [embed] });
+}
+
+async function calculateAA(i: ChatInputCommandInteraction) {
+	if (!i.guild) return;
+	const luck = i.options.getInteger('luck', true);
+	const hidden = i.options.getBoolean('hidden') ?? false;
+
+	await i.deferReply({ ephemeral: hidden });
+
+	const luckTable = getLuckTable(luck);
+	const ability = await getRandomAnyAbility(luckTable);
+
+	const embed = formatAbilityEmbed(i.guild, ability);
+	embed.setTitle(`Random AA: ${luck} Luck - ${ability.name}`);
+	embed.setColor(Colors.LuminousVividPink);
 
 	return i.editReply({ embeds: [embed] });
 }

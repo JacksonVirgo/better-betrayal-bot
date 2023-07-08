@@ -15,6 +15,7 @@ export default newSlashCommand({
 	data,
 	execute: async (i) => {
 		if (!i.guild) return i.reply({ content: 'This command can only be used in a server', ephemeral: true });
+		if (i.guildId != '1096058997477490861') return i.reply({ content: 'This command can only be used in the official server', ephemeral: true });
 
 		try {
 			if (!i.guild) return;

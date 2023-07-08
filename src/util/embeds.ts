@@ -433,6 +433,22 @@ export function formatInventory(inventory: FullInventory) {
 			inline: true,
 		}
 	);
+
+	const effectValue =
+		inventory.effects.length > 0
+			? inventory.effects
+					.map((effect) => {
+						let value = `- ${effect.name}`;
+						if (effect.expiry) value += ` (expires <t:${effect.expiry}:R>)`;
+						return value;
+					})
+					.join('\n')
+			: '- None';
+
+	e.addFields({
+		name: 'Effects',
+		value: effectValue,
+	});
 	return {
 		embed: e,
 	};

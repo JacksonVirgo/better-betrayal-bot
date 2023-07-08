@@ -184,6 +184,9 @@ model Inventory {
   anyAbilities AnyAbility[]
   statuses     AfflictedStatus[]
   immunities   AfflictedImmunity[]
+  effects      AfflictedEffect[]
+
+  hostNotes String?
 
   updatedAt DateTime @default(now()) @updatedAt
 }
@@ -220,6 +223,18 @@ model AfflictedImmunity {
   name   String
   expiry Int?
   xShot  Int?
+
+  updatedAt DateTime? @updatedAt
+}
+
+model AfflictedEffect {
+  id          Int       @id @default(autoincrement())
+  inventory   Inventory @relation(fields: [inventoryId], references: [id])
+  inventoryId Int
+
+  name    String
+  details String?
+  expiry  Int?
 
   updatedAt DateTime? @updatedAt
 }

@@ -4,7 +4,16 @@ import { Button, Modal, SelectMenu } from '../../structures/interactions';
 import config from '../../config';
 
 export default async function onInteraction(i: Interaction<any>) {
-	if (i.isChatInputCommand()) {
+	if (i.isAutocomplete()) {
+		const command = slashCommands.get(i.commandName);
+		if (!command) return console.error(`No command matching ${i.commandName} was found.`);
+		if (!command.autocomplete) return;
+		try {
+			return command.autocomplete(i);
+		} catch (err) {
+			console.log(err);
+		}
+	} else if (i.isChatInputCommand()) {
 		const command = slashCommands.get(i.commandName);
 		if (!command) return console.error(`No command matching ${i.commandName} was found.`);
 		try {

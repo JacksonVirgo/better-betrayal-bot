@@ -91,6 +91,7 @@ export async function getInventory(discordId: string) {
 			anyAbilities: true,
 			statuses: true,
 			immunities: true,
+			effects: true,
 		},
 	});
 
