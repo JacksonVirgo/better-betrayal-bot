@@ -1,7 +1,8 @@
 import { ActionRowBuilder, EmbedBuilder, ModalBuilder, SlashCommandBuilder, TextInputBuilder, TextInputStyle } from 'discord.js';
 import { newSlashCommand } from '../../structures/BotClient';
-import { items } from '../../data';
+import { abilities, abilityAttachments, items, perkAttachments, perks, roles } from '../../data';
 import { prisma } from '../../database';
+import { Role } from '@prisma/client';
 
 const data = new SlashCommandBuilder().setName('test').setDescription('Development only. Command to test');
 export default newSlashCommand({
@@ -15,16 +16,6 @@ export default newSlashCommand({
 		const embed = new EmbedBuilder().setTitle('MIGRATING DATABASE');
 		embed.setColor('Grey');
 		embed.setDescription(`**Migrating database entries**`);
-
-		const update = {
-			roles: 0,
-			perks: 0,
-			abilities: 0,
-			statuses: 0,
-			perkAttachments: 0,
-			abilityAttachments: 0,
-			items: 0,
-		};
 
 		for (const itemRaw of items) {
 			try {
@@ -47,18 +38,150 @@ export default newSlashCommand({
 			}
 		}
 
-		// const embed = new EmbedBuilder().setTitle('PENDING ACTION/S');
-		// embed.setColor('Grey');
-		// embed.setDescription(`**These actions have not been submitted**`);
-		// embed.addFields({
-		// 	name: 'Actions',
-		// 	value: `1. Blah blah\n2. Blah blah`,
-		// });
-		// embed.setAuthor({
-		// 	name: i.user.username,
-		// 	iconURL: i.user.displayAvatarURL({}),
-		// });
+		embed.setDescription('Done Items');
+		await i.editReply({ embeds: [embed] });
 
-		// return i.reply({ embeds: [embed] });
+		for (const perkRaw of perks) {
+			try {
+				await prisma.perk.create({
+					data: {
+						name: perkRaw.name,
+						effect: perkRaw.effect,
+						categories: perkRaw.categories,
+						orderPriority: perkRaw.orderPriority,
+					},
+				});
+			} catch (err) {
+				console.log(err);
+			}
+		}
+
+		embed.setDescription('Done Perks');
+		await i.editReply({ embeds: [embed] });
+
+		for (const ability of abilities) {
+			try {
+				await prisma.ability.create({
+					data: {
+						name: ability.name,
+						effect: ability.effect,
+						categories: ability.categories,
+						orderPriority: ability.orderPriority,
+						charges: ability.charges,
+						actionType: ability.actionType,
+						detailedEffect: ability.detailedEffect,
+						isAnyAbility: ability.isAnyAbility,
+						isRoleSpecific: ability.isRoleSpecific,
+						rarity: ability.rarity,
+						showCategories: ability.showCategories,
+					},
+				});
+			} catch (err) {
+				console.log(err);
+			}
+		}
+
+		embed.setDescription('Done Abilities');
+		await i.editReply({ embeds: [embed] });
+
+		for (const role of roles) {
+			try {
+				await prisma.role.create({
+					data: {
+						alignment: role.alignment,
+						name: role.name,
+					},
+				});
+			} catch (err) {
+				console.log(err);
+			}
+		}
+
+		embed.setDescription('Done Roles');
+		await i.editReply({ embeds: [embed] });
+
+		for (const perkAttachment of perkAttachments) {
+			try {
+				let roles: number[] = [];
+				for (const roleData of perkAttachment.roles) {
+					const role = await prisma.role.findFirst({
+						where: {
+							name: roleData.name,
+						},
+					});
+					if (role) roles.push(role.id);
+				}
+
+				const attachment = await prisma.perkAttachment.create({
+					data: {
+						perkId: perkAttachment.perkId,
+					},
+				});
+
+				if (roles.length > 0) {
+					await prisma.perkAttachment.update({
+						where: {
+							id: attachment.id,
+						},
+						data: {
+							roles: {
+								set: roles.map((role) => {
+									return {
+										id: role,
+									};
+								}),
+							},
+						},
+					});
+				}
+			} catch (err) {
+				console.log(err);
+			}
+		}
+
+		embed.setDescription('Done Perk Attachments');
+		await i.editReply({ embeds: [embed] });
+
+		for (const abil of abilityAttachments) {
+			try {
+				let roles: number[] = [];
+				for (const roleData of abil.roles) {
+					const role = await prisma.role.findFirst({
+						where: {
+							name: roleData.name,
+						},
+					});
+					if (role) roles.push(role.id);
+				}
+
+				const attachment = await prisma.abilityAttachment.create({
+					data: {
+						abilityId: abil.abilityId,
+					},
+				});
+
+				if (roles.length > 0) {
+					await prisma.abilityAttachment.update({
+						where: {
+							id: attachment.id,
+						},
+						data: {
+							roles: {
+								set: roles.map((role) => {
+									return {
+										id: role,
+									};
+								}),
+							},
+						},
+					});
+				}
+			} catch (err) {
+				console.log(err);
+			}
+		}
+
+		embed.setDescription('Done Ability Attachments');
+		await i.editReply({ embeds: [embed] });
 	},
 });

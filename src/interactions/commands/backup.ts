@@ -7,7 +7,7 @@ export default newSlashCommand({
 	data,
 	execute: async (i) => {
 		if (!i.guild) return i.reply({ content: 'This command can only be used in a server', ephemeral: true });
-		if (i.guildId != '1096058997477490861') return i.reply({ content: 'This command can only be used in the official server', ephemeral: true });
+		if (i.guildId != '1096058997477490861' && i.guildId != '1021166667809697863') return i.reply({ content: 'This command can only be used in the official server', ephemeral: true });
 		try {
 			await i.reply({ content: 'Backing up the database...', ephemeral: true });
 
@@ -26,10 +26,32 @@ export default newSlashCommand({
 			const statusBuffer = await toBuffer(await prisma.status.findMany());
 			await i.followUp({ content: 'Backing up statuses...', files: [new AttachmentBuilder(statusBuffer).setName('statuses.json')] });
 
-			const perkAttachment = await toBuffer(await prisma.perkAttachment.findMany());
+			const perkAttachment = await toBuffer(
+				await prisma.perkAttachment.findMany({
+					where: {},
+					include: {
+						roles: {
+							select: {
+								name: true,
+							},
+						},
+					},
+				})
+			);
 			await i.followUp({ content: 'Backing up perk attachments...', files: [new AttachmentBuilder(perkAttachment).setName('perkAttachments.json')] });
 
-			const abilityAttachments = await toBuffer(await prisma.abilityAttachment.findMany());
+			const abilityAttachments = await toBuffer(
+				await prisma.abilityAttachment.findMany({
+					where: {},
+					include: {
+						roles: {
+							select: {
+								name: true,
+							},
+						},
+					},
+				})
+			);
 			await i.followUp({ content: 'Backing up ability attachments...', files: [new AttachmentBuilder(abilityAttachments).setName('abilityAttachments.json')] });
 		} catch (err) {
 			console.log(`[ERROR BACKUP COMMAND]`, err);
