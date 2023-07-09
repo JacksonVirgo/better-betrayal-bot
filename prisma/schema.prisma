@@ -40,7 +40,9 @@ enum ActionCategory {
   THEFT
   DESTRUCTION
   ALTERATION
+
   VISITING
+  GLOBAL_COOLDOWN
 }
 
 enum Rarity {

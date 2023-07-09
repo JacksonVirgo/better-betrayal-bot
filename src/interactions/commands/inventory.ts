@@ -1,9 +1,8 @@
 import { ChannelType, ChatInputCommandInteraction, SlashCommandBuilder } from 'discord.js';
 import { newSlashCommand } from '../../structures/BotClient';
 import { prisma } from '../../database';
-import { FullInventory, fetchAndFormatInventory, formatInventory } from '../../util/embeds';
+import { fetchAndFormatInventory, formatInventory } from '../../util/embeds';
 import { getClosestAbilityName, getClosestImmunityName, getClosestItemName, getClosestStatusName, getInventory } from '../../util/database';
-import { effect } from 'zod';
 
 const data = new SlashCommandBuilder().setName('inventory').setDescription('Command to manage inventories');
 

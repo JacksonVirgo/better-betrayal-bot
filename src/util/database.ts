@@ -40,7 +40,9 @@ export const categoryMap: Record<ActionCategory, string> = {
 	THEFT: 'Theft',
 	DESTRUCTION: 'Destruction',
 	ALTERATION: 'Alteration',
+
 	VISITING: 'Visiting',
+	GLOBAL_COOLDOWN: 'Global Cooldown',
 };
 
 export const perkCategoryMap: Record<PerkCategory, string> = {
