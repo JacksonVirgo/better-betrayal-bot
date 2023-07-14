@@ -351,25 +351,29 @@ export function formatInventory(inventory: FullInventory) {
 
 	const { coins, coinBonus } = inventory;
 	const coinValue = `${coins} [${coinBonus / 100}%] 🪙`;
-
+	if (inventory.alignment) e.addFields({ name: 'Alignment', value: capitalize(inventory.alignment), inline: false });
 	e.addFields({ name: 'Coins', value: coinValue, inline: false });
-	// e.addFields(
-	// 	{
-	// 		name: 'Base Abilities',
-	// 		value: `- Absorption [1]\n- Reanimate [1]`,
-	// 		inline: true,
-	// 	},
-	// 	{
-	// 		name: '\u200B',
-	// 		value: '\u200B',
-	// 		inline: true,
-	// 	},
-	// 	{
-	// 		name: 'Base Perks',
-	// 		value: `- Eternal Hunger\n- Impatient Meal\n- Legion [off]`,
-	// 		inline: true,
-	// 	}
-	// );
+
+	const baseAbilities = inventory.baseAbility.length > 0 ? inventory.baseAbility.map((ability) => `- ${ability.name} [${ability.charges}]`).join('\n') : '- None';
+	const basePerks = inventory.basePerk.length > 0 ? inventory.basePerk.map((perk) => `- ${perk.name}${perk.toggled != undefined ? ` [${perk.toggled ? 'ON' : 'OFF'}]` : ''}`).join('\n') : '- None';
+
+	e.addFields(
+		{
+			name: 'Base Abilities',
+			value: baseAbilities,
+			inline: true,
+		},
+		{
+			name: '\u200B',
+			value: '\u200B',
+			inline: true,
+		},
+		{
+			name: 'Base Perks',
+			value: basePerks,
+			inline: true,
+		}
+	);
 
 	const itemValue = inventory.items.length > 0 ? inventory.items.map((item, index) => `- ${item}`).join('\n') : '- None';
 	const anyAbilities = inventory.anyAbilities.length > 0 ? inventory.anyAbilities.map((ability) => `- ${ability.abilityName} [${ability.charges}]`).join('\n') : '- None';

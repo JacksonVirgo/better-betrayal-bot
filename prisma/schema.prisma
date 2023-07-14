@@ -175,14 +175,18 @@ model Inventory {
   channelId String  @unique
   messageId String? @unique
 
-  coins         Int     @default(0)
-  luck          Int     @default(0)
-  coinBonus     Int     @default(0)
-  luckBonus     Int     @default(0)
-  inventorySize Int     @default(4)
-  showLuck      Boolean @default(false)
+  coins         Int        @default(0)
+  luck          Int        @default(0)
+  coinBonus     Int        @default(0)
+  luckBonus     Int        @default(0)
+  inventorySize Int        @default(4)
+  showLuck      Boolean    @default(false)
+  alignment     Alignment?
+  role          String?
 
   items        String[]
+  baseAbility  BaseAbility[]
+  basePerk     BasePerk[]
   anyAbilities AnyAbility[]
   statuses     AfflictedStatus[]
   immunities   AfflictedImmunity[]
@@ -191,6 +195,29 @@ model Inventory {
   hostNotes String?
 
   updatedAt DateTime @default(now()) @updatedAt
+}
+
+model BaseAbility {
+  id          Int @id @default(autoincrement())
+  inventoryId Int
+
+  inventory Inventory @relation(fields: [inventoryId], references: [id])
+  name      String
+  charges   Int       @default(0)
+  cooldown  DateTime?
+
+  updatedAt DateTime? @updatedAt
+}
+
+model BasePerk {
+  id          Int @id @default(autoincrement())
+  inventoryId Int
+
+  inventory Inventory @relation(fields: [inventoryId], references: [id])
+  name      String
+  toggled   Boolean?
+
+  updatedAt DateTime? @updatedAt
 }
 
 model AnyAbility {
@@ -239,4 +266,36 @@ model AfflictedEffect {
   expiry  Int?
 
   updatedAt DateTime? @updatedAt
+}
+
+// ACTION FUNNEL
+
+enum PendingActionType {
+  ITEM
+  ABILITY
+}
+
+model ActionBacklog {
+  id Int @id @default(autoincrement())
+
+  discordId String
+  channelId String
+  messageId String
+  actions   PendingAction[]
+
+  updatedAt DateTime @default(now()) @updatedAt
+}
+
+model PendingAction {
+  id Int @id @default(autoincrement())
+
+  actionBacklog   ActionBacklog @relation(fields: [actionBacklogId], references: [id])
+  actionBacklogId Int
+
+  actionType  PendingActionType
+  action      String
+  targets     String[]
+  notes       String?
+  selfTarget  Boolean?
+  isPlainText Boolean?
 }

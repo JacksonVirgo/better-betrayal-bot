@@ -84,16 +84,37 @@ export function formatActionType(category: string | ActionType) {
 
 export type NonNullable<T> = T extends null | undefined ? never : T;
 
-export async function getInventory(discordId: string) {
+type InventoryQuery = string | { channelId: string };
+export async function getInventory(discordId: InventoryQuery) {
+	if (typeof discordId === 'string') {
+		const inventory = await prisma.inventory.findUnique({
+			where: {
+				discordId,
+			},
+			include: {
+				anyAbilities: true,
+				statuses: true,
+				immunities: true,
+				effects: true,
+				baseAbility: true,
+				basePerk: true,
+			},
+		});
+
+		return inventory;
+	}
+
 	const inventory = await prisma.inventory.findUnique({
 		where: {
-			discordId,
+			channelId: discordId.channelId,
 		},
 		include: {
 			anyAbilities: true,
 			statuses: true,
 			immunities: true,
 			effects: true,
+			baseAbility: true,
+			basePerk: true,
 		},
 	});
 
@@ -122,6 +143,13 @@ export async function getClosestItem(name: string) {
 	};
 }
 
+export async function getClosestPerkName(name: string) {
+	const allPerks = await prisma.perk.findMany({ where: {}, select: { name: true } });
+	const allPerkNames = allPerks.map((a) => a.name);
+	const spellCheck = findBestMatch(name, allPerkNames);
+	const bestMatch = spellCheck.bestMatch.target;
+	return bestMatch;
+}
 export async function getPerk(name: string) {
 	const perk = await prisma.perk.findUnique({
 		where: {
@@ -165,6 +193,13 @@ export async function getAbility(name: string) {
 	return perk;
 }
 
+export async function getClosestRoleName(name: string) {
+	const allRoles = await prisma.role.findMany({ where: {}, select: { name: true } });
+	const allRoleNames = allRoles.map((r) => r.name);
+	const spellCheck = findBestMatch(name, allRoleNames);
+	const bestMatch = spellCheck.bestMatch.target;
+	return bestMatch;
+}
 export async function getRole(name: string) {
 	const fetchedRole = await prisma.role.findUnique({
 		where: {

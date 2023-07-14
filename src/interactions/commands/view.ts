@@ -85,7 +85,6 @@ export default newSlashCommand({
 	},
 	autocomplete: async (i: AutocompleteInteraction) => {
 		const focusedValue = i.options.getFocused();
-
 		const subcommand = i.options.getSubcommand(false);
 		if (!subcommand) return await i.respond([]);
 
@@ -94,6 +93,7 @@ export default newSlashCommand({
 				let allMatchingRoles = cache.roles.filter((role) => role.toLowerCase().startsWith(focusedValue.toLowerCase()));
 				allMatchingRoles = allMatchingRoles.splice(0, Math.min(allMatchingRoles.length, 25));
 				return await i.respond(allMatchingRoles.map((match) => ({ name: match, value: match })));
+
 			case 'ability':
 				let allMatchingAbilities = cache.abilities.filter((ability) => ability.toLowerCase().startsWith(focusedValue.toLowerCase()));
 				allMatchingAbilities = allMatchingAbilities.splice(0, Math.min(allMatchingAbilities.length, 25));
