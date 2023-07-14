@@ -1,4 +1,4 @@
-import { ChatInputCommandInteraction, Colors, EmbedBuilder, SlashCommandBuilder } from 'discord.js';
+import { ActionRowBuilder, ChatInputCommandInteraction, Colors, EmbedBuilder, SlashCommandBuilder, UserSelectMenuBuilder } from 'discord.js';
 import { newSlashCommand } from '../../structures/BotClient';
 import { getLuckTable, getRandomAnyAbility, getRandomItem } from '../../util/luck';
 import { prisma } from '../../database';
@@ -161,6 +161,9 @@ async function calculateItemRain(i: ChatInputCommandInteraction) {
 	embed.setColor(Colors.LuminousVividPink);
 	embed.setDescription(`Received ${itemCount} items: ${message}`);
 
+	// const row = new ActionRowBuilder<UserSelectMenuBuilder>();
+	// row.addComponents(new UserSelectMenuBuilder().setCustomId('test').setPlaceholder('Select an inventory to add to').setMaxValues(1).setMinValues(1));
+
 	return i.editReply({ embeds: [embed] });
 }
 
@@ -187,7 +190,7 @@ async function calculatePowerDrop(i: ChatInputCommandInteraction) {
 	return i.editReply({ embeds: [embed] });
 }
 
-async function calculateCarePackage(i: ChatInputCommandInteraction) {
+export async function calculateCarePackage(i: ChatInputCommandInteraction) {
 	const luck = i.options.getInteger('luck') ?? 0;
 	const itemCount = i.options.getInteger('items') ?? 1;
 	const aaCount = i.options.getInteger('aas') ?? 1;
