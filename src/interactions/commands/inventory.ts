@@ -7,6 +7,7 @@ import { Alignment } from '@prisma/client';
 import { capitalize } from '../../util/string';
 import { getLuckTable, getRandomAnyAbility, getRandomItem } from '../../util/luck';
 import { raw } from '@prisma/client/runtime';
+import config from '../../config';
 
 const data = new SlashCommandBuilder().setName('inventory').setDescription('Command to manage inventories');
 
@@ -124,9 +125,10 @@ data.addSubcommand((sub) =>
 
 export default newSlashCommand({
 	data,
+	mainServer: true,
 	execute: async (i) => {
 		if (!i.guild) return i.reply({ content: 'This command can only be used in a server', ephemeral: true });
-		if (i.guildId != '1096058997477490861') return i.reply({ content: 'This command can only be used in the official server', ephemeral: true });
+		if (i.guildId != config.MAIN_SERVER_ID) return i.reply({ content: 'This command can only be used in the official server', ephemeral: true });
 
 		try {
 			const subcommand = i.options.getSubcommand(true);

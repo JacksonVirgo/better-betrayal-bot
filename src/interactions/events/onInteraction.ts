@@ -1,6 +1,6 @@
 import { ChatInputCommandInteraction, Interaction, WebhookClient } from 'discord.js';
-import { slashCommands } from '../../structures/BotClient';
-import { Button, Modal, SelectMenu } from '../../structures/interactions';
+import { contextMenus, slashCommands } from '../../structures/BotClient';
+import { Button, Context, Modal, SelectMenu } from '../../structures/interactions';
 import config from '../../config';
 
 export default async function onInteraction(i: Interaction<any>) {
@@ -25,6 +25,18 @@ export default async function onInteraction(i: Interaction<any>) {
 			wh.send({ content: `[COMMAND] **${i.user.username}** executed command **${i.commandName}${subGroup ? ` ${subGroup}` : ''}${sub ? ` ${sub}` : ''}**` });
 
 			command.execute(inter);
+		} catch (err) {
+			console.log(err);
+		}
+	} else if (i.isContextMenuCommand()) {
+		const command = contextMenus.get(i.commandName);
+		if (!command) return console.error(`No command matching ${i.commandName} was found.`);
+
+		try {
+			const wh = new WebhookClient({ url: config.LOGS_WEBHOOK });
+			wh.send({ content: `[CONTEXT MENU] **${i.user.username}** executed menu **${i.commandName}**` });
+
+			command.execute(i);
 		} catch (err) {
 			console.log(err);
 		}

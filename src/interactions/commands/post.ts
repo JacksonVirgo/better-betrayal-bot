@@ -6,6 +6,7 @@ import { RarityColors } from '../../util/colors';
 import { formatRoleEmbed } from '../../util/embeds';
 import { formatActionType, formatActionCategory } from '../../util/database';
 import { capitalize } from '../../util/string';
+import config from '../../config';
 
 const data = new SlashCommandBuilder().setName('post').setDescription('Staff only. Posts important stuff idk');
 
@@ -24,9 +25,10 @@ data.addStringOption((opt) =>
 
 export default newSlashCommand({
 	data,
+	mainServer: true,
 	execute: async (i) => {
 		if (!i.guild) return i.reply({ content: 'This command can only be used in a server', ephemeral: true });
-		if (i.guildId != '1096058997477490861') return i.reply({ content: 'This command can only be used in the official server', ephemeral: true });
+		if (i.guildId != config.MAIN_SERVER_ID) return i.reply({ content: 'This command can only be used in the official server', ephemeral: true });
 
 		try {
 			const thing = i.options.getString('thing', true);
