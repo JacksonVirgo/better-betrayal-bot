@@ -1,10 +1,12 @@
-import { ChannelType, ColorResolvable, EmbedBuilder, ModalSubmitInteraction } from 'discord.js';
-import { Modal } from '../../structures/interactions';
+import { ActionRowBuilder, ButtonBuilder, ButtonStyle, ChannelType, ColorResolvable, EmbedBuilder, ModalSubmitInteraction } from 'discord.js';
+import { Button, Modal } from '../../structures/interactions';
 import { prisma } from '../../database';
 import { formatAbilityChanges } from '../../util/embeds';
 import { getInventory } from '../../util/database';
 import action from '../commands/action';
 import { getAverageColor } from 'fast-average-color-node';
+import setProcessed from '../buttons/setProcessed';
+import unsetProcessed from '../buttons/unsetProcessed';
 
 export default new Modal('submit-custom-action', 'Submit Action').onExecute(async (i: ModalSubmitInteraction, cache) => {
 	if (!i.guild) return;
@@ -43,7 +45,13 @@ export default new Modal('submit-custom-action', 'Submit Action').onExecute(asyn
 			name: displayName,
 			iconURL: avatarURL,
 		});
-		await actionChannel.send({ embeds: [embed] });
+
+		const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+			new ButtonBuilder().setCustomId(setProcessed.getCustomID()).setLabel('Set Processed').setStyle(ButtonStyle.Secondary),
+			new ButtonBuilder().setCustomId(unsetProcessed.getCustomID()).setLabel('Set Not Processed').setStyle(ButtonStyle.Secondary)
+		);
+
+		await actionChannel.send({ embeds: [embed], components: [row] });
 		await confessional.send({ embeds: [embed] });
 
 		return i.reply({ content: 'Action Submitted in your confessional', ephemeral: true });
