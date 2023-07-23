@@ -175,6 +175,7 @@ model Inventory {
   channelId String  @unique
   messageId String? @unique
 
+  isAlive       Boolean    @default(true)
   coins         Int        @default(0)
   luck          Int        @default(0)
   coinBonus     Int        @default(0)
@@ -273,6 +274,7 @@ model AfflictedEffect {
 enum PendingActionType {
   ITEM
   ABILITY
+  CUSTOM
 }
 
 model ActionBacklog {

@@ -10,6 +10,7 @@ import {
 	TextInputBuilder,
 	Interaction as CoreInteraction,
 	MessagePayload,
+	ContextMenuCommandInteraction,
 } from 'discord.js';
 type CustomID = string;
 type AnyOutcome = any | Promise<any>;
@@ -163,6 +164,25 @@ export class Modal extends Interaction {
 
 	public execute(i: ModalSubmitInteraction, cacheHandle: string) {
 		if (!i.isModalSubmit()) return;
+		if (this.func) this.func(i, cacheHandle);
+	}
+}
+
+export class Context extends Interaction {
+	static contexts: Collection<CustomID, Context> = new Collection();
+	private func: undefined | ((i: ContextMenuCommandInteraction, cache: string) => any | Promise<any>);
+	constructor(customId: CustomID) {
+		super(customId);
+		Context.contexts.set(customId, this);
+	}
+
+	public onExecute(func: (i: ContextMenuCommandInteraction, cache: string) => any | Promise<any>) {
+		this.func = func;
+		return this;
+	}
+
+	public execute(i: ContextMenuCommandInteraction, cacheHandle: string) {
+		if (!i.isContextMenuCommand()) return;
 		if (this.func) this.func(i, cacheHandle);
 	}
 }

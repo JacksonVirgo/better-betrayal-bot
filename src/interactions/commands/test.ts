@@ -4,6 +4,7 @@ import { cache, prisma } from '../../database';
 import { fetchAndFormatInventory, formatInventory } from '../../util/embeds';
 import { getClosestAbilityName, getClosestImmunityName, getClosestItemName, getClosestRoleName, getClosestStatusName, getInventory, getRole } from '../../util/database';
 import { Alignment } from '@prisma/client';
+import config from '../../config';
 
 const data = new SlashCommandBuilder().setName('test').setDescription('Command to manage inventories');
 
@@ -102,9 +103,10 @@ data.addSubcommand((sub) =>
 
 export default newSlashCommand({
 	data,
+	mainServer: true,
 	execute: async (i) => {
 		if (!i.guild) return i.reply({ content: 'This command can only be used in a server', ephemeral: true });
-		if (i.guildId != '1096058997477490861') return i.reply({ content: 'This command can only be used in the official server', ephemeral: true });
+		if (i.user.id != '416757703516356628') return i.reply({ content: 'This command is currently disabled', ephemeral: true });
 
 		try {
 			const subcommand = i.options.getSubcommand(true);

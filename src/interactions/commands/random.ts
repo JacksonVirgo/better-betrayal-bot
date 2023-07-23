@@ -3,6 +3,7 @@ import { newSlashCommand } from '../../structures/BotClient';
 import { getRandomItem, getRandomRole } from '../../util/luck';
 import { formatItemEmbed, formatRoleEmbed } from '../../util/embeds';
 import viewRole from '../buttons/viewRole';
+import { cache } from '../../database';
 
 const data = new SlashCommandBuilder().setName('random').setDescription('View commands that give you a random result');
 
@@ -16,6 +17,9 @@ data.addSubcommand((sub) =>
 	sub
 		.setName('deceptionist')
 		.setDescription('Get a random deceptionist pick of 3 roles of each alignment')
+		.addStringOption((opt) => opt.setName('good-role').setDescription('The good role to use').setRequired(false).setAutocomplete(true))
+		.addStringOption((opt) => opt.setName('neutral-role').setDescription('The neutral role to use').setRequired(false).setAutocomplete(true))
+		.addStringOption((opt) => opt.setName('evil-role').setDescription('The evil role to use').setRequired(false).setAutocomplete(true))
 		.addBooleanOption((opt) => opt.setName('hidden').setDescription('To make this for only you to see'))
 );
 data.addSubcommand((sub) =>
@@ -24,7 +28,6 @@ data.addSubcommand((sub) =>
 		.setDescription('Get a random item. FOR LUCK USE /luck itemrain')
 		.addBooleanOption((opt) => opt.setName('hidden').setDescription('To make this for only you to see'))
 );
-
 data.addSubcommand((sub) =>
 	sub
 		.setName('dice')
@@ -61,6 +64,20 @@ export default newSlashCommand({
 			console.log(`[ERROR RANDOM COMMAND]`, err);
 		}
 	},
+	autocomplete: async (i) => {
+		const subcommand = i.options.getSubcommand(true);
+		const focused = i.options.getFocused(true);
+
+		switch (subcommand) {
+			case 'deceptionist':
+				let roles = focused.name == 'good-role' ? cache.goodRoles : focused.name == 'neutral-role' ? cache.neutralRoles : cache.evilRoles;
+				let filtered = roles.filter((role) => role.toLowerCase().startsWith(focused.value.toLowerCase()));
+				filtered = filtered.splice(0, Math.min(filtered.length, 25));
+				return await i.respond(filtered.map((match) => ({ name: match, value: match })));
+			default:
+				return i.respond([]);
+		}
+	},
 });
 
 async function showRandomRole(i: ChatInputCommandInteraction) {
@@ -76,16 +93,17 @@ async function showRandomRole(i: ChatInputCommandInteraction) {
 async function showDeceptionistPick(i: ChatInputCommandInteraction) {
 	if (!i.guild) return i.reply({ content: 'This command can only be used in a server', ephemeral: true });
 	const hidden = i.options.getBoolean('hidden') ?? false;
-	const randomGood = await getRandomRole('GOOD');
-	const randomNeutral = await getRandomRole('NEUTRAL');
-	const randomEvil = await getRandomRole('EVIL');
+
+	const randomGood = i.options.getString('good-role') ?? (await getRandomRole('GOOD'))?.name;
+	const randomNeutral = i.options.getString('neutral-role') ?? (await getRandomRole('NEUTRAL'))?.name;
+	const randomEvil = i.options.getString('evil-role') ?? (await getRandomRole('EVIL'))?.name;
 
 	if (!(randomGood && randomNeutral && randomEvil)) return i.reply({ content: 'Failed to fetch one of each alignment', ephemeral: true });
 
 	const row = new ActionRowBuilder<ButtonBuilder>();
-	row.addComponents(new ButtonBuilder().setCustomId(viewRole.createCustomID(randomGood.name)).setLabel(randomGood.name).setStyle(ButtonStyle.Success));
-	row.addComponents(new ButtonBuilder().setCustomId(viewRole.createCustomID(randomNeutral.name)).setLabel(randomNeutral.name).setStyle(ButtonStyle.Secondary));
-	row.addComponents(new ButtonBuilder().setCustomId(viewRole.createCustomID(randomEvil.name)).setLabel(randomEvil.name).setStyle(ButtonStyle.Danger));
+	row.addComponents(new ButtonBuilder().setCustomId(viewRole.createCustomID(randomGood)).setLabel(randomGood).setStyle(ButtonStyle.Success));
+	row.addComponents(new ButtonBuilder().setCustomId(viewRole.createCustomID(randomNeutral)).setLabel(randomNeutral).setStyle(ButtonStyle.Secondary));
+	row.addComponents(new ButtonBuilder().setCustomId(viewRole.createCustomID(randomEvil)).setLabel(randomEvil).setStyle(ButtonStyle.Danger));
 
 	return i.reply({ content: 'Press the appropriate buttons to see the full role-cards', components: [row], ephemeral: hidden });
 }

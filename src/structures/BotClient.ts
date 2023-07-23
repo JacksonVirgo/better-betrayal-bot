@@ -1,20 +1,32 @@
-import { AutocompleteInteraction, ChannelType, ChatInputCommandInteraction, Client, Collection, Events, GatewayIntentBits, Interaction, Message, REST, Routes, SlashCommandBuilder } from 'discord.js';
+import {
+	AutocompleteInteraction,
+	ChatInputCommandInteraction,
+	Client,
+	Collection,
+	ContextMenuCommandBuilder,
+	ContextMenuCommandInteraction,
+	Events,
+	GatewayIntentBits,
+	REST,
+	Routes,
+	SlashCommandBuilder,
+} from 'discord.js';
 import * as path from 'path';
 import * as fs from 'fs';
 import { Button, Event, Modal, SelectMenu } from './interactions';
 import OnClientReady from '../interactions/events/clientReady';
 import OnInteraction from '../interactions/events/onInteraction';
-import { ContextMenuCommandBuilder } from 'discord.js';
-import { prisma } from '../database';
-import { fetchAndFormatInventory } from '../util/embeds';
+import config from '../config';
 
 export const DEFAULT_INTENTS = {
 	intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.GuildIntegrations],
 };
 
 export const slashCommands: Collection<string, SlashCommand> = new Collection();
+
 export interface SlashCommand {
 	data: SlashCommandBuilder;
+	mainServer?: boolean;
 	execute: (i: ChatInputCommandInteraction) => any | Promise<any>;
 	autocomplete?: (i: AutocompleteInteraction) => any | Promise<any>;
 }
@@ -22,6 +34,23 @@ export interface SlashCommand {
 export async function newSlashCommand(cmd: SlashCommand) {
 	try {
 		slashCommands.set(cmd.data.name, cmd);
+		console.log(`Loaded [${cmd.data.name}]`);
+		return cmd;
+	} catch (err) {
+		console.error(`Failed to load [${cmd.data.name}]`);
+	}
+}
+
+export const contextMenus: Collection<string, ContextMenuCommand> = new Collection();
+export interface ContextMenuCommand {
+	data: ContextMenuCommandBuilder;
+	mainServer?: boolean;
+	execute: (i: ContextMenuCommandInteraction) => any | Promise<any>;
+}
+
+export async function newContextMenuCommand(cmd: ContextMenuCommand) {
+	try {
+		contextMenus.set(cmd.data.name, cmd);
 		console.log(`Loaded [${cmd.data.name}]`);
 		return cmd;
 	} catch (err) {
@@ -48,7 +77,7 @@ export class BotClient extends Client {
 		this.loadInteractions<Button>('buttons');
 		this.loadInteractions<SelectMenu>('selectmenu');
 		this.loadInteractions<Modal>('modals');
-		// this.loadInteractions<ContextMenuCommandBuilder>('context');
+		this.loadInteractions<ContextMenuCommandBuilder>('context');
 
 		this.assignEvents();
 		this.registerCommands();
@@ -66,6 +95,7 @@ export class BotClient extends Client {
 
 	public async loadInteractions<T>(newPath: string) {
 		const commandPath = path.join(this.interactionsPath, newPath);
+		if (!fs.existsSync(commandPath)) return;
 		const files = fs.readdirSync(commandPath).filter((file) => file.endsWith('.ts') || file.endsWith('.js'));
 		for (const file of files) {
 			try {
@@ -80,14 +110,28 @@ export class BotClient extends Client {
 
 	public async registerCommands() {
 		try {
-			const list: any[] = [];
+			const allServers: any[] = [];
+			const mainServer: any[] = [];
+
 			slashCommands.forEach((val) => {
-				list.push(val.data.toJSON());
+				if (val.mainServer) mainServer.push(val.data.toJSON());
+				else allServers.push(val.data.toJSON());
 			});
 
-			const raw = await this.rest.put(Routes.applicationCommands(this.clientID), { body: list });
+			contextMenus.forEach((val) => {
+				if (val.mainServer) mainServer.push(val.data.toJSON());
+				else allServers.push(val.data.toJSON());
+			});
+
+			const raw = await this.rest.put(Routes.applicationCommands(this.clientID), { body: allServers });
 			const data = raw as any;
 			console.log(`Successfully reloaded ${data.length} application (/) commands.`);
+
+			if (mainServer.length > 0) {
+				const raw = await this.rest.put(Routes.applicationGuildCommands(this.clientID, config.MAIN_SERVER_ID), { body: mainServer });
+				const data = raw as any;
+				console.log(`[GUILD] Successfully reloaded ${data.length} application (/) commands.`);
+			}
 		} catch (err) {
 			console.error(err);
 		}
