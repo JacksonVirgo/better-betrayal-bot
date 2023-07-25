@@ -96,16 +96,24 @@ export class BotClient extends Client {
 	public async loadInteractions<T>(newPath: string) {
 		const commandPath = path.join(this.interactionsPath, newPath);
 		if (!fs.existsSync(commandPath)) return;
-		const files = fs.readdirSync(commandPath).filter((file) => file.endsWith('.ts') || file.endsWith('.js'));
-		for (const file of files) {
-			try {
-				const filePath = path.join(commandPath, file);
-				require(filePath).default as T;
-			} catch (err) {
-				console.error(`Failed trying to load ${file}`);
-				console.error(err);
+		const recursive = (directory: string) => {
+			const filesInDirectory = fs.readdirSync(directory);
+			for (const file of filesInDirectory) {
+				const absolute = path.join(directory, file);
+				if (fs.statSync(absolute).isDirectory()) {
+					recursive(absolute);
+				} else {
+					try {
+						const filePath = path.join(commandPath, file);
+						require(filePath).default as T;
+					} catch (err) {
+						console.error(`Failed trying to load ${file}`);
+						console.error(err);
+					}
+				}
 			}
-		}
+		};
+		recursive(commandPath);
 	}
 
 	public async registerCommands() {
@@ -130,7 +138,7 @@ export class BotClient extends Client {
 			if (mainServer.length > 0) {
 				const raw = await this.rest.put(Routes.applicationGuildCommands(this.clientID, config.MAIN_SERVER_ID), { body: mainServer });
 				const data = raw as any;
-				console.log(`[GUILD] Successfully reloaded ${data.length} application (/) commands.`);
+				console.log(`[GUILD] Successfully reloaded ${data.length} application (/) commands.\n`);
 			}
 		} catch (err) {
 			console.error(err);

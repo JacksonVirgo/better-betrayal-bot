@@ -4,7 +4,6 @@ import { cache, prisma } from '../../database';
 import { fetchAndFormatInventory, formatInventory } from '../../util/embeds';
 import { getClosestAbilityName, getClosestImmunityName, getClosestItemName, getClosestRoleName, getClosestStatusName, getInventory, getRole } from '../../util/database';
 import { Alignment } from '@prisma/client';
-import config from '../../config';
 
 const data = new SlashCommandBuilder().setName('test').setDescription('Command to manage inventories');
 
