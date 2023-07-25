@@ -193,7 +193,8 @@ model Inventory {
   immunities   AfflictedImmunity[]
   effects      AfflictedEffect[]
 
-  hostNotes String?
+  hostNotes        String?
+  submittedActions SubmittedAction[]
 
   updatedAt DateTime @default(now()) @updatedAt
 }
@@ -286,6 +287,16 @@ model ActionBacklog {
   actions   PendingAction[]
 
   updatedAt DateTime @default(now()) @updatedAt
+}
+
+model SubmittedAction {
+  id Int @id @default(autoincrement())
+
+  inventory   Inventory @relation(fields: [inventoryId], references: [id])
+  inventoryId Int
+
+  hostMessageId   String @unique
+  playerMessageId String @unique
 }
 
 model PendingAction {

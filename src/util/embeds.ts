@@ -276,8 +276,10 @@ export function formatPerkEmbed(_guild: Guild, perk: FullPerk) {
 
 	const footerList = generatePerkFooter(perk);
 
-	const iconURL = _guild.iconURL({ extension: 'png', size: 1024 });
-	embed.setFooter({ iconURL: iconURL ?? undefined, text: footerList.length > 0 ? footerList.join(' · ') : '\u200B' });
+	if (footerList.length > 0) {
+		const iconURL = _guild.iconURL({ extension: 'png', size: 1024 });
+		embed.setFooter({ iconURL: iconURL ?? undefined, text: footerList.length > 0 ? footerList.join(' · ') : '\u200B' });
+	}
 
 	return embed;
 }

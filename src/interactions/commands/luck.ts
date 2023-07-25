@@ -1,8 +1,6 @@
-import { ActionRowBuilder, ChatInputCommandInteraction, Colors, EmbedBuilder, SlashCommandBuilder, UserSelectMenuBuilder } from 'discord.js';
+import { ChatInputCommandInteraction, Colors, EmbedBuilder, SlashCommandBuilder } from 'discord.js';
 import { newSlashCommand } from '../../structures/BotClient';
 import { getLuckTable, getRandomAnyAbility, getRandomItem } from '../../util/luck';
-import { prisma } from '../../database';
-import { findBestMatch } from 'string-similarity';
 import { formatAbilityEmbed, formatItemEmbed } from '../../util/embeds';
 
 const data = new SlashCommandBuilder().setName('luck').setDescription('View the luck table for a specific luck value');

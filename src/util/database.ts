@@ -243,3 +243,20 @@ export async function getStatus(name: string) {
 
 	return fetchedStatus;
 }
+
+export async function getSubmittedAction(messageId: string) {
+	try {
+		const storedAction = await prisma.submittedAction.findUnique({
+			where: {
+				hostMessageId: messageId,
+			},
+			include: {
+				inventory: true,
+			},
+		});
+
+		return storedAction;
+	} catch (err) {
+		return null;
+	}
+}

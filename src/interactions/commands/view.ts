@@ -4,7 +4,6 @@ import { formatAbilityEmbed, formatInventory, formatItemEmbed, formatPerkEmbed, 
 import viewRoleButton from '../buttons/viewRole';
 import { cache, prisma } from '../../database';
 import { findBestMatch } from 'string-similarity';
-import viewChangesButton from '../buttons/viewChanges';
 import { getAbility, getClosestItem, getClosestStatusName, getInventory, getPerk, getRole, getStatus } from '../../util/database';
 
 const data = new SlashCommandBuilder().setName('view').setDescription('View information about Betrayal');
@@ -47,7 +46,6 @@ data.addSubcommand((sub) =>
 		.addStringOption((opt) => opt.setName('name').setDescription('The status to view').setRequired(true).setAutocomplete(true))
 		.addBooleanOption((opt) => opt.setName('hidden').setDescription('To make this for only you to see'))
 );
-
 data.addSubcommand((sub) =>
 	sub
 		.setName('inventory')
@@ -169,10 +167,6 @@ async function viewAbility(i: ChatInputCommandInteraction) {
 	if (attachments) {
 		for (const role of attachments.roles) {
 			row.addComponents(new ButtonBuilder().setCustomId(viewRoleButton.createCustomID(role.name)).setLabel(`View ${role.name}`).setStyle(ButtonStyle.Secondary));
-		}
-
-		if (ability.changes.length > 0) {
-			row.addComponents(new ButtonBuilder().setCustomId(viewChangesButton.createCustomID(ability.name)).setLabel(`View Upgrades/Downgrades`).setStyle(ButtonStyle.Secondary));
 		}
 	}
 
