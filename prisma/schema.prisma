@@ -283,7 +283,7 @@ model ActionBacklog {
 
   discordId String
   channelId String
-  messageId String
+  messageId String          @unique
   actions   PendingAction[]
 
   updatedAt DateTime @default(now()) @updatedAt

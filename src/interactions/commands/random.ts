@@ -1,9 +1,19 @@
-import { ActionRowBuilder, ButtonBuilder, ButtonStyle, ChatInputCommandInteraction, Colors, EmbedBuilder, SlashCommandBuilder } from 'discord.js';
+import {
+	ActionRowBuilder,
+	ButtonBuilder,
+	ButtonStyle,
+	ChatInputCommandInteraction,
+	Colors,
+	Embed,
+	EmbedBuilder,
+	SlashCommandBuilder,
+} from 'discord.js';
 import { newSlashCommand } from '../../structures/BotClient';
 import { getRandomItem, getRandomRole } from '../../util/luck';
 import { formatItemEmbed, formatRoleEmbed } from '../../util/embeds';
 import viewRole from '../buttons/viewRole';
 import { cache } from '../../database';
+import { getClosestRoleName, getRole } from '../../util/database';
 
 const data = new SlashCommandBuilder().setName('random').setDescription('View commands that give you a random result');
 
@@ -20,6 +30,14 @@ data.addSubcommand((sub) =>
 		.addStringOption((opt) => opt.setName('good-role').setDescription('The good role to use').setRequired(false).setAutocomplete(true))
 		.addStringOption((opt) => opt.setName('neutral-role').setDescription('The neutral role to use').setRequired(false).setAutocomplete(true))
 		.addStringOption((opt) => opt.setName('evil-role').setDescription('The evil role to use').setRequired(false).setAutocomplete(true))
+		.addBooleanOption((opt) => opt.setName('hidden').setDescription('To make this for only you to see'))
+);
+data.addSubcommand((sub) =>
+	sub
+		.setName('setup')
+		.setDescription('Get a randomised setup')
+		.addIntegerOption((opt) => opt.setName('players').setDescription('The amount of players').setRequired(true))
+		.addIntegerOption((opt) => opt.setName('deceptionists').setDescription('The amount of deceptionist picks to get').setRequired(true))
 		.addBooleanOption((opt) => opt.setName('hidden').setDescription('To make this for only you to see'))
 );
 data.addSubcommand((sub) =>
@@ -55,6 +73,10 @@ export default newSlashCommand({
 					break;
 				case 'dice':
 					showDiceRole(i);
+					break;
+
+				case 'setup':
+					showFullDecept(i);
 					break;
 
 				default:
@@ -94,18 +116,89 @@ async function showDeceptionistPick(i: ChatInputCommandInteraction) {
 	if (!i.guild) return i.reply({ content: 'This command can only be used in a server', ephemeral: true });
 	const hidden = i.options.getBoolean('hidden') ?? false;
 
-	const randomGood = i.options.getString('good-role') ?? (await getRandomRole('GOOD'))?.name;
-	const randomNeutral = i.options.getString('neutral-role') ?? (await getRandomRole('NEUTRAL'))?.name;
-	const randomEvil = i.options.getString('evil-role') ?? (await getRandomRole('EVIL'))?.name;
+	const goodRole = i.options.getString('good-role');
+	const neutralRole = i.options.getString('neutral-role');
+	const evilRole = i.options.getString('evil-role');
+
+	const randomGood = goodRole ? await getClosestRoleName(goodRole) : (await getRandomRole('GOOD'))?.name;
+	const randomNeutral = neutralRole ? await getClosestRoleName(neutralRole) : (await getRandomRole('NEUTRAL'))?.name;
+	const randomEvil = evilRole ? await getClosestRoleName(evilRole) : (await getRandomRole('EVIL'))?.name;
 
 	if (!(randomGood && randomNeutral && randomEvil)) return i.reply({ content: 'Failed to fetch one of each alignment', ephemeral: true });
 
 	const row = new ActionRowBuilder<ButtonBuilder>();
 	row.addComponents(new ButtonBuilder().setCustomId(viewRole.createCustomID(randomGood)).setLabel(randomGood).setStyle(ButtonStyle.Success));
-	row.addComponents(new ButtonBuilder().setCustomId(viewRole.createCustomID(randomNeutral)).setLabel(randomNeutral).setStyle(ButtonStyle.Secondary));
+	row.addComponents(
+		new ButtonBuilder().setCustomId(viewRole.createCustomID(randomNeutral)).setLabel(randomNeutral).setStyle(ButtonStyle.Secondary)
+	);
 	row.addComponents(new ButtonBuilder().setCustomId(viewRole.createCustomID(randomEvil)).setLabel(randomEvil).setStyle(ButtonStyle.Danger));
 
 	return i.reply({ content: 'Press the appropriate buttons to see the full role-cards', components: [row], ephemeral: hidden });
+}
+
+async function showFullDecept(i: ChatInputCommandInteraction) {
+	if (!i.guild) return i.reply({ content: 'This command can only be used in a server', ephemeral: true });
+	const hidden = i.options.getBoolean('hidden') ?? false;
+	const decepts = i.options.getInteger('deceptionists', true);
+	const players = i.options.getInteger('players', true);
+
+	const totalNormalPlayers = players - decepts;
+
+	let goods: string[] = [];
+	let neutrals: string[] = [];
+	let evils: string[] = [];
+	let normalRoles: string[] = [];
+
+	await i.deferReply({ ephemeral: hidden });
+
+	while (goods.length < decepts) {
+		const randomGood = (await getRandomRole('GOOD'))?.name;
+		if (!randomGood) return i.editReply({ content: 'Failed to fetch a good role' });
+		if (!goods.includes(randomGood)) goods.push(randomGood);
+	}
+
+	while (neutrals.length < decepts) {
+		const randomNeutral = (await getRandomRole('NEUTRAL'))?.name;
+		if (!randomNeutral) return i.editReply({ content: 'Failed to fetch a neutral role' });
+		if (!neutrals.includes(randomNeutral)) neutrals.push(randomNeutral);
+	}
+
+	while (evils.length < decepts) {
+		const randomEvil = (await getRandomRole('EVIL'))?.name;
+		if (!randomEvil) return i.editReply({ content: 'Failed to fetch a evil role' });
+		if (!evils.includes(randomEvil)) evils.push(randomEvil);
+	}
+
+	while (normalRoles.length < totalNormalPlayers) {
+		const randomRole = (await getRandomRole())?.name;
+		if (!randomRole) return i.editReply({ content: 'Failed to fetch a role' });
+		if (!normalRoles.includes(randomRole)) normalRoles.push(randomRole);
+	}
+
+	let allDeceptionistRoles = [...goods, ...neutrals, ...evils];
+
+	const embed = new EmbedBuilder();
+	embed.setTitle(`Game Setup for ${players} Players`);
+	embed.setColor('#FFFFFF');
+	embed.setDescription(`${decepts} deceptionists\n^ = Deceptionist conflict`);
+
+	let setup: string[] = [];
+	for (let i = 0; i < decepts; i++) {
+		setup.push(`${goods[i]} / ${neutrals[i]} / ${evils[i]}`);
+	}
+
+	for (let i = 0; i < totalNormalPlayers; i++) {
+		setup.push(`${allDeceptionistRoles.includes(normalRoles[i]) ? '- ' : ''}${normalRoles[i]}`);
+	}
+
+	if (setup.length < 1) return i.editReply({ content: 'Failed to generate a setup' });
+
+	embed.setFields({
+		name: 'Roles',
+		value: `\`\`\`diff\n${setup.join('\n').trim()}\`\`\``,
+	});
+
+	return i.editReply({ embeds: [embed] });
 }
 
 async function showRandomItem(i: ChatInputCommandInteraction) {
