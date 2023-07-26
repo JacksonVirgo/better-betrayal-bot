@@ -260,3 +260,21 @@ export async function getSubmittedAction(messageId: string) {
 		return null;
 	}
 }
+
+export type ActionBacklog = NonNullable<Awaited<ReturnType<typeof getActionBacklog>>>;
+export async function getActionBacklog(messageId: string) {
+	try {
+		const backlog = await prisma.actionBacklog.findUnique({
+			where: {
+				messageId: messageId,
+			},
+			include: {
+				actions: true,
+			},
+		});
+
+		return backlog;
+	} catch (err) {
+		return null;
+	}
+}

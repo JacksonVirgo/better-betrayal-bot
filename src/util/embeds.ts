@@ -2,10 +2,9 @@ import { Ability, Item, Perk, Status, Role, AbilityChange, ActionType, PerkCateg
 import { Guild, EmbedBuilder, Colors, ActionRowBuilder, StringSelectMenuBuilder, ColorResolvable, GuildMember, ButtonBuilder } from 'discord.js';
 import { rarityToColor } from './colors';
 import { bulkReplaceAll, capitalize, fixWhitespace, replaceAll } from './string';
-import { formatActionCategory, formatActionType, formatPerkCategory, getAbility, getPerk, getRole } from './database';
+import { ActionBacklog, formatActionCategory, formatActionType, formatPerkCategory, getAbility, getPerk, getRole } from './database';
 import viewAbilityChangeSelect from '../interactions/selectmenu/viewAbilityChange';
 import { getInventory } from './database';
-import { Button } from '../structures/interactions';
 
 export function generateAbilityFooter(ability: Ability) {
 	let footerList: string[] = [ability.rarity ? `${capitalize(ability.rarity)} AA` : 'Not an AA'];
@@ -140,7 +139,9 @@ export function formatRolePlainText(_guild: Guild, role: FullRole) {
 			['\n', '\n'],
 		]);
 
-		result += `${name} (${charges === -1 ? '∞' : 'x' + charges})${attachment}${!ability.showCategories ? '' : ` (${footerValues.join('/')})`} - ${formattedEffect}\n\n`;
+		result += `${name} (${charges === -1 ? '∞' : 'x' + charges})${attachment}${
+			!ability.showCategories ? '' : ` (${footerValues.join('/')})`
+		} - ${formattedEffect}\n\n`;
 	}
 
 	result += 'Perks:\n';
@@ -356,8 +357,12 @@ export function formatInventory(inventory: FullInventory) {
 	if (inventory.alignment) e.addFields({ name: 'Alignment', value: capitalize(inventory.alignment), inline: false });
 	e.addFields({ name: 'Coins', value: coinValue, inline: false });
 
-	const baseAbilities = inventory.baseAbility.length > 0 ? inventory.baseAbility.map((ability) => `- ${ability.name} [${ability.charges}]`).join('\n') : '- None';
-	const basePerks = inventory.basePerk.length > 0 ? inventory.basePerk.map((perk) => `- ${perk.name}${perk.toggled != undefined ? ` [${perk.toggled ? 'ON' : 'OFF'}]` : ''}`).join('\n') : '- None';
+	const baseAbilities =
+		inventory.baseAbility.length > 0 ? inventory.baseAbility.map((ability) => `- ${ability.name} [${ability.charges}]`).join('\n') : '- None';
+	const basePerks =
+		inventory.basePerk.length > 0
+			? inventory.basePerk.map((perk) => `- ${perk.name}${perk.toggled != undefined ? ` [${perk.toggled ? 'ON' : 'OFF'}]` : ''}`).join('\n')
+			: '- None';
 
 	e.addFields(
 		{
@@ -378,7 +383,10 @@ export function formatInventory(inventory: FullInventory) {
 	);
 
 	const itemValue = inventory.items.length > 0 ? inventory.items.map((item, index) => `- ${item}`).join('\n') : '- None';
-	const anyAbilities = inventory.anyAbilities.length > 0 ? inventory.anyAbilities.map((ability) => `- ${ability.abilityName} [${ability.charges}]`).join('\n') : '- None';
+	const anyAbilities =
+		inventory.anyAbilities.length > 0
+			? inventory.anyAbilities.map((ability) => `- ${ability.abilityName} [${ability.charges}]`).join('\n')
+			: '- None';
 
 	e.addFields(
 		{
@@ -476,4 +484,10 @@ export async function fetchAndFormatInventory(userId: string): Promise<FetchAndF
 		embed,
 		inventory: inventory,
 	};
+}
+
+export async function formatActionBacklog(actionBacklog: ActionBacklog) {
+	const embed = new EmbedBuilder();
+	embed.setColor('White');
+	embed.setTitle('Action Backlog');
 }
