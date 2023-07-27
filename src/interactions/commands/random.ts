@@ -142,9 +142,9 @@ async function showFullDecept(i: ChatInputCommandInteraction) {
 	const decepts = i.options.getInteger('deceptionists', true);
 	const players = i.options.getInteger('players', true);
 
-	const goodAmount = await prisma.role.count({ where: { alignment: 'GOOD' } });
-	const neutralAmount = await prisma.role.count({ where: { alignment: 'NEUTRAL' } });
-	const evilAmount = await prisma.role.count({ where: { alignment: 'EVIL' } });
+	const goodAmount = await prisma.role.count({ where: { alignment: 'GOOD', isActive: true } });
+	const neutralAmount = await prisma.role.count({ where: { alignment: 'NEUTRAL', isActive: true } });
+	const evilAmount = await prisma.role.count({ where: { alignment: 'EVIL', isActive: true } });
 
 	if (decepts > goodAmount && decepts > neutralAmount && decepts > evilAmount)
 		return i.reply({ content: 'Not enough roles to generate a setup', ephemeral: true });

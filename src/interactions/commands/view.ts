@@ -1,6 +1,22 @@
-import { ActionRowBuilder, AutocompleteInteraction, ButtonBuilder, ButtonStyle, ChatInputCommandInteraction, EmbedBuilder, SlashCommandBuilder } from 'discord.js';
+import {
+	ActionRowBuilder,
+	AutocompleteInteraction,
+	ButtonBuilder,
+	ButtonStyle,
+	ChatInputCommandInteraction,
+	EmbedBuilder,
+	SlashCommandBuilder,
+} from 'discord.js';
 import { newSlashCommand } from '../../structures/BotClient';
-import { formatAbilityEmbed, formatInventory, formatItemEmbed, formatPerkEmbed, formatRoleEmbed, formatRolePlainText, formatStatusEmbed } from '../../util/embeds';
+import {
+	formatAbilityEmbed,
+	formatInventory,
+	formatItemEmbed,
+	formatPerkEmbed,
+	formatRoleEmbed,
+	formatRolePlainText,
+	formatStatusEmbed,
+} from '../../util/embeds';
 import viewRoleButton from '../buttons/viewRole';
 import { cache, prisma } from '../../database';
 import { findBestMatch } from 'string-similarity';
@@ -18,6 +34,14 @@ data.addSubcommand((sub) =>
 		.addBooleanOption((opt) => opt.setName('hidden').setDescription('To make this for only you to see'))
 		.addBooleanOption((opt) => opt.setName('plaintext').setDescription('View the role in plaintext'))
 );
+
+data.addSubcommand((sub) =>
+	sub
+		.setName('activeroles')
+		.setDescription('View all active roles')
+		.addBooleanOption((opt) => opt.setName('hidden').setDescription('To make this for only you to see'))
+);
+
 data.addSubcommand((sub) =>
 	sub
 		.setName('ability')
@@ -73,6 +97,35 @@ export default newSlashCommand({
 					return await viewStatus(i);
 				case 'inventory':
 					return await viewInventory(i);
+				case 'activeroles':
+					const activeRoleHidden = i.options.getBoolean('hidden') ?? false;
+					const allRoles = await prisma.role.findMany({ where: { isActive: true }, select: { name: true, alignment: true } });
+
+					const goodRoles = allRoles.filter((r) => r.alignment == 'GOOD');
+					const evilRoles = allRoles.filter((r) => r.alignment == 'EVIL');
+					const neutralRoles = allRoles.filter((r) => r.alignment == 'NEUTRAL');
+
+					const activeRoleEmbed = new EmbedBuilder();
+					activeRoleEmbed.setTitle('All Current Roles');
+					activeRoleEmbed.setColor('White');
+					activeRoleEmbed.addFields({
+						name: `Goods (${goodRoles.length})`,
+						value: goodRoles.map((r, i) => `${i + 1}. ${r.name}`).join('\n'),
+						inline: true,
+					});
+					activeRoleEmbed.addFields({
+						name: `Neutrals (${neutralRoles.length})`,
+						value: neutralRoles.map((r, i) => `${i + 1}. ${r.name}`).join('\n'),
+						inline: true,
+					});
+
+					activeRoleEmbed.addFields({
+						name: `Evils (${evilRoles.length})`,
+						value: evilRoles.map((r, i) => `${i + 1}. ${r.name}`).join('\n'),
+						inline: true,
+					});
+
+					return i.reply({ embeds: [activeRoleEmbed], ephemeral: activeRoleHidden });
 
 				default:
 					return await i.reply({ content: 'Invalid subcommand', ephemeral: true });
@@ -157,23 +210,31 @@ async function viewAbility(i: ChatInputCommandInteraction) {
 	const spellCheck = findBestMatch(name, allAbilityNames);
 	const bestMatch = spellCheck.bestMatch.target;
 
+	console.log(bestMatch + ' bm');
+
 	const ability = await getAbility(bestMatch);
 
 	if (!ability) return i.reply({ content: `Ability ${name} not found`, ephemeral: true });
+
 	const embed = formatAbilityEmbed(i.guild, ability);
 	const row = new ActionRowBuilder<ButtonBuilder>();
 	const attachments = ability.abilityAttachments;
 
 	if (attachments) {
 		for (const role of attachments.roles) {
-			row.addComponents(new ButtonBuilder().setCustomId(viewRoleButton.createCustomID(role.name)).setLabel(`View ${role.name}`).setStyle(ButtonStyle.Secondary));
+			row.addComponents(
+				new ButtonBuilder()
+					.setCustomId(viewRoleButton.createCustomID(role.name))
+					.setLabel(`View ${role.name}`)
+					.setStyle(ButtonStyle.Secondary)
+			);
 		}
 	}
 
 	return await i.editReply({
 		content: bestMatch.toLowerCase() != name.toLowerCase() ? `Did you mean __${bestMatch}__?` : undefined,
 		embeds: [embed],
-		components: [row],
+		components: row.components.length > 0 ? [row] : undefined,
 	});
 }
 
@@ -198,7 +259,12 @@ async function viewPerk(i: ChatInputCommandInteraction) {
 
 	if (attachment) {
 		for (const role of attachment.roles) {
-			row.addComponents(new ButtonBuilder().setCustomId(viewRoleButton.createCustomID(role.name)).setLabel(`View ${role.name}`).setStyle(ButtonStyle.Secondary));
+			row.addComponents(
+				new ButtonBuilder()
+					.setCustomId(viewRoleButton.createCustomID(role.name))
+					.setLabel(`View ${role.name}`)
+					.setStyle(ButtonStyle.Secondary)
+			);
 		}
 	}
 
@@ -221,7 +287,10 @@ async function viewItem(i: ChatInputCommandInteraction) {
 
 	const embed = formatItemEmbed(i.guild, item);
 
-	return i.editReply({ content: correctedName.toLowerCase() != name.toLowerCase() ? `Did you mean __${correctedName}__?` : undefined, embeds: [embed] });
+	return i.editReply({
+		content: correctedName.toLowerCase() != name.toLowerCase() ? `Did you mean __${correctedName}__?` : undefined,
+		embeds: [embed],
+	});
 }
 
 async function viewStatus(i: ChatInputCommandInteraction) {

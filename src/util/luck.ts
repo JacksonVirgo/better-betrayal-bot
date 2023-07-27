@@ -148,10 +148,19 @@ export async function getRandomAnyAbility(luckTable: LuckTable) {
 	return ability;
 }
 
-export async function getRandomRole(alignment?: Alignment) {
+type RandomRoleQuery = {
+	includeInactives?: boolean;
+};
+export async function getRandomRole(
+	alignment?: Alignment,
+	query: RandomRoleQuery = {
+		includeInactives: false,
+	}
+) {
 	const allRoles = await prisma.role.findMany({
 		where: {
 			alignment: alignment,
+			isActive: query.includeInactives ? undefined : true,
 		},
 		select: {
 			name: true,

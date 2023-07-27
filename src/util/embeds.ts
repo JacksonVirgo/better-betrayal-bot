@@ -252,7 +252,6 @@ export function formatAbilityEmbed(_guild: Guild, ability: FullAbility, showChar
 	embed.setColor('#CE8964');
 
 	const effect = ability.effect.split('\\n').join('\n');
-
 	embed.addFields([
 		{
 			name: showCharges ? `**Effect [${ability.charges === -1 ? 'inf' : 'x' + ability.charges}]**` : '**Effect**',
@@ -266,7 +265,13 @@ export function formatAbilityEmbed(_guild: Guild, ability: FullAbility, showChar
 	let footer: string | undefined;
 	if (footerList.length > 0) footer = footerList.join(' · ');
 
-	if (footer && ability.showCategories) embed.setFooter({ text: footer, iconURL: iconURL ?? undefined });
+	if (footer && ability.showCategories)
+		embed.setFooter({
+			text: footer,
+			iconURL:
+				iconURL ??
+				'https://media.discordapp.net/attachments/1119025192946110464/1134163159683436635/01ca8750d5cd51369188b326246f99eb.png?width=256&height=256',
+		});
 
 	return embed;
 }

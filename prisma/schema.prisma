@@ -67,6 +67,8 @@ model Role {
   abilityAttachments AbilityAttachment[]
   perkAttachments    PerkAttachment[]
 
+  isActive Boolean @default(true)
+
   updatedAt DateTime? @updatedAt
 }
 
