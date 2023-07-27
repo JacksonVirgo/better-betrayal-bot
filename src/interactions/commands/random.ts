@@ -12,7 +12,7 @@ import { newSlashCommand } from '../../structures/BotClient';
 import { getRandomItem, getRandomRole } from '../../util/luck';
 import { formatItemEmbed, formatRoleEmbed } from '../../util/embeds';
 import viewRole from '../buttons/viewRole';
-import { cache } from '../../database';
+import { cache, prisma } from '../../database';
 import { getClosestRoleName, getRole } from '../../util/database';
 
 const data = new SlashCommandBuilder().setName('random').setDescription('View commands that give you a random result');
@@ -141,6 +141,13 @@ async function showFullDecept(i: ChatInputCommandInteraction) {
 	const hidden = i.options.getBoolean('hidden') ?? false;
 	const decepts = i.options.getInteger('deceptionists', true);
 	const players = i.options.getInteger('players', true);
+
+	const goodAmount = await prisma.role.count({ where: { alignment: 'GOOD' } });
+	const neutralAmount = await prisma.role.count({ where: { alignment: 'NEUTRAL' } });
+	const evilAmount = await prisma.role.count({ where: { alignment: 'EVIL' } });
+
+	if (decepts > goodAmount && decepts > neutralAmount && decepts > evilAmount)
+		return i.reply({ content: 'Not enough roles to generate a setup', ephemeral: true });
 
 	const totalNormalPlayers = players - decepts;
 

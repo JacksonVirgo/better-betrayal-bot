@@ -18,7 +18,11 @@ export default new Button('set-action-host-notes')
 		const storedAction = await getSubmittedAction(i.message.id);
 		if (!storedAction) return i.reply({ content: 'No action found', ephemeral: true });
 
+		await i.guild.channels.fetch();
+		await i.guild.members.fetch();
+
 		const confessional = i.guild.channels.cache.get(storedAction.inventory.channelId);
+
 		if (confessional?.type != ChannelType.GuildText)
 			return i.reply({
 				content: 'Confessional channel not found',

@@ -262,11 +262,11 @@ export async function getSubmittedAction(messageId: string) {
 }
 
 export type ActionBacklog = NonNullable<Awaited<ReturnType<typeof getActionBacklog>>>;
-export async function getActionBacklog(messageId: string) {
+export async function getActionBacklog(channelId: string) {
 	try {
 		const backlog = await prisma.actionBacklog.findUnique({
 			where: {
-				messageId: messageId,
+				channelId,
 			},
 			include: {
 				actions: true,

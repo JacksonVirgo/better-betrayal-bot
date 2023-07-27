@@ -1,10 +1,21 @@
 import { Ability, Item, Perk, Status, Role, AbilityChange, ActionType, PerkCategory, Inventory } from '@prisma/client';
-import { Guild, EmbedBuilder, Colors, ActionRowBuilder, StringSelectMenuBuilder, ColorResolvable, GuildMember, ButtonBuilder } from 'discord.js';
+import {
+	Guild,
+	EmbedBuilder,
+	Colors,
+	ActionRowBuilder,
+	StringSelectMenuBuilder,
+	ColorResolvable,
+	GuildMember,
+	ButtonBuilder,
+	ButtonStyle,
+} from 'discord.js';
 import { rarityToColor } from './colors';
 import { bulkReplaceAll, capitalize, fixWhitespace, replaceAll } from './string';
 import { ActionBacklog, formatActionCategory, formatActionType, formatPerkCategory, getAbility, getPerk, getRole } from './database';
 import viewAbilityChangeSelect from '../interactions/selectmenu/viewAbilityChange';
 import { getInventory } from './database';
+import processActionBacklog from '../interactions/buttons/processActionBacklog';
 
 export function generateAbilityFooter(ability: Ability) {
 	let footerList: string[] = [ability.rarity ? `${capitalize(ability.rarity)} AA` : 'Not an AA'];
@@ -486,8 +497,33 @@ export async function fetchAndFormatInventory(userId: string): Promise<FetchAndF
 	};
 }
 
-export async function formatActionBacklog(actionBacklog: ActionBacklog) {
+export function formatActionBacklog(actionBacklog: ActionBacklog) {
 	const embed = new EmbedBuilder();
 	embed.setColor('White');
 	embed.setTitle('Action Backlog');
+
+	const actions: string[] = [];
+
+	for (const action of actionBacklog.actions) {
+		if (action.isPlainText) {
+			let value = action.action;
+			if (action.timestamp) value += ` - Submitted for <t:${Math.ceil(action.timestamp.getTime() / 1000)}:f>`;
+
+			actions.push(value);
+		}
+	}
+
+	if (actions.length > 0) {
+		embed.addFields({
+			name: 'Actions',
+			value: actions.map((action, index) => `${index + 1}. ${action}`).join('\n'),
+		});
+	}
+
+	const row = new ActionRowBuilder<ButtonBuilder>();
+	row.addComponents(
+		new ButtonBuilder().setCustomId(processActionBacklog.getCustomID()).setLabel('Submit Action/s').setStyle(ButtonStyle.Secondary)
+	);
+
+	return { embed, row };
 }

@@ -195,6 +195,7 @@ model Inventory {
 
   hostNotes        String?
   submittedActions SubmittedAction[]
+  actionBacklog    ActionBacklog[]
 
   updatedAt DateTime @default(now()) @updatedAt
 }
@@ -281,10 +282,11 @@ enum PendingActionType {
 model ActionBacklog {
   id Int @id @default(autoincrement())
 
-  discordId String
-  channelId String
-  messageId String          @unique
-  actions   PendingAction[]
+  discordId   String
+  channelId   String          @unique
+  actions     PendingAction[]
+  inventory   Inventory       @relation(fields: [inventoryId], references: [id])
+  inventoryId Int
 
   updatedAt DateTime @default(now()) @updatedAt
 }
@@ -311,4 +313,5 @@ model PendingAction {
   notes       String?
   selfTarget  Boolean?
   isPlainText Boolean?
+  timestamp   DateTime?
 }
