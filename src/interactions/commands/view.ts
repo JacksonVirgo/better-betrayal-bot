@@ -99,7 +99,7 @@ export default newSlashCommand({
 					return await viewInventory(i);
 				case 'activeroles':
 					const activeRoleHidden = i.options.getBoolean('hidden') ?? false;
-					const allRoles = await prisma.role.findMany({ where: {}, select: { name: true, alignment: true } });
+					const allRoles = await prisma.role.findMany({ where: { isActive: true }, select: { name: true, alignment: true } });
 
 					const goodRoles = allRoles.filter((r) => r.alignment == 'GOOD');
 					const evilRoles = allRoles.filter((r) => r.alignment == 'EVIL');
@@ -109,18 +109,18 @@ export default newSlashCommand({
 					activeRoleEmbed.setTitle('All Current Roles');
 					activeRoleEmbed.setColor('White');
 					activeRoleEmbed.addFields({
-						name: 'Good',
+						name: `Goods (${goodRoles.length})`,
 						value: goodRoles.map((r, i) => `${i + 1}. ${r.name}`).join('\n'),
 						inline: true,
 					});
 					activeRoleEmbed.addFields({
-						name: 'Neutral',
+						name: `Neutrals (${neutralRoles.length})`,
 						value: neutralRoles.map((r, i) => `${i + 1}. ${r.name}`).join('\n'),
 						inline: true,
 					});
 
 					activeRoleEmbed.addFields({
-						name: 'Evil',
+						name: `Evils (${evilRoles.length})`,
 						value: evilRoles.map((r, i) => `${i + 1}. ${r.name}`).join('\n'),
 						inline: true,
 					});
