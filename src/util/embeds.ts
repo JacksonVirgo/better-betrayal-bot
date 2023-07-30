@@ -1,4 +1,4 @@
-import { Ability, Item, Perk, Status, Role, AbilityChange, ActionType, PerkCategory, Inventory } from '@prisma/client';
+import { Ability, Item, Perk, Status, Role, AbilityChange, ActionType, PerkCategory, Inventory, StatusLink } from '@prisma/client';
 import {
 	Guild,
 	EmbedBuilder,
@@ -12,10 +12,21 @@ import {
 } from 'discord.js';
 import { rarityToColor } from './colors';
 import { bulkReplaceAll, capitalize, fixWhitespace, replaceAll } from './string';
-import { ActionBacklog, formatActionCategory, formatActionType, formatPerkCategory, getAbility, getPerk, getRole } from './database';
+import {
+	ActionBacklog,
+	FullStatus,
+	StatusLinks,
+	formatActionCategory,
+	formatActionType,
+	formatPerkCategory,
+	getAbility,
+	getPerk,
+	getRole,
+} from './database';
 import viewAbilityChangeSelect from '../interactions/selectmenu/viewAbilityChange';
 import { getInventory } from './database';
 import processActionBacklog from '../interactions/buttons/processActionBacklog';
+import { stat } from 'fs';
 
 export function generateAbilityFooter(ability: Ability) {
 	let footerList: string[] = [ability.rarity ? `${capitalize(ability.rarity)} AA` : 'Not an AA'];
@@ -230,10 +241,9 @@ export function formatItemEmbed(_guild: Guild, item: Item) {
 	return embed;
 }
 
-export function formatStatusEmbed(_guild: Guild, status: Status) {
+export function formatStatusEmbed(_guild: Guild, status: FullStatus, statusLinks: StatusLinks = []) {
 	const embed = new EmbedBuilder();
 	embed.setTitle(status.name);
-	// embed.setThumbnail(guild.iconURL({ extenson: 'png', size: 1024 }));
 	embed.setColor('#8964CE');
 	embed.addFields([
 		{
@@ -242,7 +252,27 @@ export function formatStatusEmbed(_guild: Guild, status: Status) {
 		},
 	]);
 
-	return embed;
+	const inflictions = statusLinks.filter((link) => link.linkType === 'INFLICTION');
+	const cures = statusLinks.filter((link) => link.linkType === 'CURE');
+
+	const row = new ActionRowBuilder<ButtonBuilder>();
+	row.addComponents(
+		new ButtonBuilder()
+			.setCustomId(`view-status-link_inflict-${status.name}`)
+			.setLabel(`Inflictions (${inflictions.length})`)
+			.setStyle(ButtonStyle.Secondary)
+			.setDisabled(inflictions.length <= 0)
+	);
+
+	row.addComponents(
+		new ButtonBuilder()
+			.setCustomId(`view-status-link_cure-${status.name}`)
+			.setLabel(`Cures (${cures.length})`)
+			.setStyle(ButtonStyle.Secondary)
+			.setDisabled(cures.length <= 0)
+	);
+
+	return { embed, row };
 }
 
 export type FullAbility = NonNullable<Awaited<ReturnType<typeof getAbility>>>;

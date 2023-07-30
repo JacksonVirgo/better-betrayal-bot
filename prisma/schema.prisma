@@ -86,11 +86,11 @@ model Ability {
   orderPriority  Int              @default(0)
   showCategories Boolean          @default(true)
 
-  changes AbilityChange[]
-
-  updatedAt DateTime? @updatedAt
-
+  changes            AbilityChange[]
   abilityAttachments AbilityAttachment?
+
+  updatedAt   DateTime?    @updatedAt
+  statusLinks StatusLink[]
 }
 
 model Perk {
@@ -102,6 +102,7 @@ model Perk {
 
   updatedAt       DateTime?       @updatedAt
   perkAttachments PerkAttachment?
+  statusLinks     StatusLink[]
 }
 
 model AbilityAttachment {
@@ -132,7 +133,8 @@ model Item {
   iconURL            String?
   customColour       String?
 
-  updatedAt DateTime? @updatedAt
+  updatedAt   DateTime?    @updatedAt
+  statusLinks StatusLink[]
 }
 
 model Status {
@@ -141,6 +143,40 @@ model Status {
   effect         String
   detailedEffect String?
   updatedAt      DateTime? @updatedAt
+}
+
+enum LinkType {
+  INFLICTION
+  CURE
+}
+
+enum StatusName {
+  Cursed
+  Frozen
+  Paralyzed
+  Burned
+  Empowered
+  Drunk
+  Restrained
+  Disabled
+  Blackmailed
+  Despaired
+  Lucky
+  Unlucky
+  Madness
+}
+
+model StatusLink {
+  id        Int  @id @default(autoincrement())
+  itemId    Int?
+  abilityId Int?
+  perkId    Int?
+
+  linkType LinkType
+  statuses StatusName[]
+  ability  Ability?     @relation(fields: [abilityId], references: [id])
+  perk     Perk?        @relation(fields: [perkId], references: [id])
+  item     Item?        @relation(fields: [itemId], references: [id])
 }
 
 enum ChangeType {

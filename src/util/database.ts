@@ -1,4 +1,4 @@
-import { ActionCategory, ActionType, PerkCategory, Rarity } from '@prisma/client';
+import { Ability, ActionCategory, ActionType, Item, Perk, PerkCategory, Rarity, StatusLink, StatusName } from '@prisma/client';
 import { prisma } from '../database';
 import { findBestMatch } from 'string-similarity';
 
@@ -48,6 +48,31 @@ export const categoryMap: Record<ActionCategory, string> = {
 export const perkCategoryMap: Record<PerkCategory, string> = {
 	TOGGLABLE: 'Togglable',
 };
+
+export const statusMap: Record<StatusName, StatusName> = {
+	Blackmailed: StatusName.Blackmailed,
+	Burned: StatusName.Burned,
+	Cursed: StatusName.Cursed,
+	Despaired: StatusName.Despaired,
+	Disabled: StatusName.Disabled,
+	Drunk: StatusName.Drunk,
+	Empowered: StatusName.Empowered,
+	Frozen: StatusName.Frozen,
+	Lucky: StatusName.Lucky,
+	Madness: StatusName.Madness,
+	Paralyzed: StatusName.Paralyzed,
+	Restrained: StatusName.Restrained,
+	Unlucky: StatusName.Unlucky,
+};
+
+export function formatStatus(status: string | StatusName): StatusName | null {
+	try {
+		const statusKey = status as StatusName;
+		return statusMap[statusKey] || null;
+	} catch (err) {
+		return null;
+	}
+}
 
 export function formatActionCategory(category: string | ActionCategory) {
 	try {
@@ -234,10 +259,30 @@ export async function getClosestStatusName(name: string, additional: string[] = 
 	const bestMatch = spellCheck.bestMatch.target;
 	return bestMatch;
 }
+
+export type FullStatus = NonNullable<Awaited<ReturnType<typeof getStatus>>>;
 export async function getStatus(name: string) {
 	const fetchedStatus = await prisma.status.findUnique({
 		where: {
 			name: name,
+		},
+	});
+
+	return fetchedStatus;
+}
+
+export type StatusLinks = NonNullable<Awaited<ReturnType<typeof getStatusLinks>>>;
+export async function getStatusLinks(name: StatusName) {
+	const fetchedStatus = await prisma.statusLink.findMany({
+		where: {
+			statuses: {
+				has: name,
+			},
+		},
+		include: {
+			ability: true,
+			perk: true,
+			item: true,
 		},
 	});
 

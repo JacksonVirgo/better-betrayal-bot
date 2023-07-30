@@ -8,7 +8,8 @@
 		"build:prisma": "npx prisma format && npx prisma generate && npx prisma db push",
 		"build": "tsc",
 		"start:local": "pm2 start ./build/index.js --name betrayal-bot",
-		"start": "node ./build/index.js"
+		"start": "node ./build/index.js",
+		"build:prod": "npm run build && npx prisma format && npx prisma generate && npx prisma db push --accept-data-loss"
 	},
 	"keywords": [],
 	"author": "",
