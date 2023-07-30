@@ -20,7 +20,17 @@ import {
 import viewRoleButton from '../buttons/viewRole';
 import { cache, prisma } from '../../database';
 import { findBestMatch } from 'string-similarity';
-import { getAbility, getClosestItem, getClosestStatusName, getInventory, getPerk, getRole, getStatus } from '../../util/database';
+import {
+	formatStatus,
+	getAbility,
+	getClosestItem,
+	getClosestStatusName,
+	getInventory,
+	getPerk,
+	getRole,
+	getStatus,
+	getStatusLinks,
+} from '../../util/database';
 
 const data = new SlashCommandBuilder().setName('view').setDescription('View information about Betrayal');
 
@@ -304,8 +314,15 @@ async function viewStatus(i: ChatInputCommandInteraction) {
 
 	if (!fetchedStatus) return i.reply({ content: `Status ${name} not found`, ephemeral: true });
 
-	const embed = formatStatusEmbed(i.guild, fetchedStatus);
-	return i.editReply({ content: bestMatch.toLowerCase() != name.toLowerCase() ? `Did you mean __${bestMatch}__?` : undefined, embeds: [embed] });
+	const statusLinkName = formatStatus(fetchedStatus.name);
+	const statusLinks = statusLinkName ? await getStatusLinks(statusLinkName) : [];
+	const { embed, row } = formatStatusEmbed(i.guild, fetchedStatus, statusLinks);
+
+	return i.editReply({
+		content: bestMatch.toLowerCase() != name.toLowerCase() ? `Did you mean __${bestMatch}__?` : undefined,
+		embeds: [embed],
+		components: [row],
+	});
 }
 
 async function viewInventory(i: ChatInputCommandInteraction) {
