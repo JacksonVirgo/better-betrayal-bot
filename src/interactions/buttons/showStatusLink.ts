@@ -42,7 +42,7 @@ export default new Button('view-status-link')
 			embed.setTitle(`${statusName} ${type === 'inflict' ? 'Inflictions' : 'Cures'}`);
 			embed.setColor('#8964CE');
 
-			let items: string[] = [];
+			let items: [string, number | null][] = [];
 			let abilities: string[] = [];
 			let perks: string[] = [];
 
@@ -50,7 +50,7 @@ export default new Button('view-status-link')
 				const { ability, item, perk } = statusLink;
 				if (!ability && !item && !perk) continue;
 				if (ability) abilities.push(ability.name);
-				if (item) items.push(item.name);
+				if (item) items.push([item.name, item.cost]);
 				if (perk) perks.push(perk.name);
 			}
 
@@ -61,7 +61,7 @@ export default new Button('view-status-link')
 				},
 				{
 					name: `Items`,
-					value: items.length > 0 ? items.map((val, index) => `${index}. ${val}`).join('\n') : 'None',
+					value: items.length > 0 ? items.map((val, index) => `${index}. ${val[0]}${val[1] ? ` (${val[1]})` : ''}`).join('\n') : 'None',
 				},
 				{
 					name: `Perks`,
