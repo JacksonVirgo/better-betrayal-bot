@@ -45,6 +45,22 @@ enum ActionCategory {
   GLOBAL_COOLDOWN
 }
 
+enum StatusName {
+  Cursed
+  Frozen
+  Paralyzed
+  Burned
+  Empowered
+  Drunk
+  Restrained
+  Disabled
+  Blackmailed
+  Despaired
+  Lucky
+  Unlucky
+  Madness
+}
+
 enum Rarity {
   COMMON
   UNCOMMON
@@ -94,15 +110,17 @@ model Ability {
 }
 
 model Perk {
-  id            Int            @id @default(autoincrement())
-  name          String         @unique
-  categories    PerkCategory[] @default([])
-  effect        String
-  orderPriority Int            @default(0)
-
-  updatedAt       DateTime?       @updatedAt
+  id              Int             @id @default(autoincrement())
+  name            String          @unique
+  categories      PerkCategory[]  @default([])
+  effect          String
+  orderPriority   Int             @default(0)
   perkAttachments PerkAttachment?
   statusLinks     StatusLink[]
+
+  immunities StatusName[]
+
+  updatedAt DateTime? @updatedAt
 }
 
 model AbilityAttachment {
@@ -148,22 +166,6 @@ model Status {
 enum LinkType {
   INFLICTION
   CURE
-}
-
-enum StatusName {
-  Cursed
-  Frozen
-  Paralyzed
-  Burned
-  Empowered
-  Drunk
-  Restrained
-  Disabled
-  Blackmailed
-  Despaired
-  Lucky
-  Unlucky
-  Madness
 }
 
 model StatusLink {
