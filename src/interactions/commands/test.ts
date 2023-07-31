@@ -48,7 +48,7 @@ export default newSlashCommand({
 			const roles = immunities[immunity];
 			embed.addFields({
 				name: `${immunity} Immunity (${roles.length})`,
-				value: roles.join(', '),
+				value: roles.length > 0 ? roles.join(', ') : 'None',
 			});
 		}
 
