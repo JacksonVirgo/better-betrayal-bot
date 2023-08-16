@@ -1,5 +1,5 @@
 type FunnelData = {
-	author: string;
-	action: string;
-	hostNotes?: string;
+    author: string;
+    action: string;
+    hostNotes?: string;
 };
