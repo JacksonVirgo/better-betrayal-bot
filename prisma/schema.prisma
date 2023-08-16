@@ -2,356 +2,356 @@
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
-  provider = "prisma-client-js"
+    provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
 }
 
 enum Alignment {
-  GOOD
-  NEUTRAL
-  EVIL
+    GOOD
+    NEUTRAL
+    EVIL
 }
 
 enum ActionType {
-  POSITIVE
-  NEUTRAL
-  NEGATIVE
+    POSITIVE
+    NEUTRAL
+    NEGATIVE
 }
 
 enum ActionCategory {
-  VOTE_BLOCKING
-  VOTE_AVOIDING
-  VOTE_REDIRECTION
-  VOTE_IMMUNITY
-  VOTE_CHANGE
-  VISIT_BLOCKING
-  VISIT_REDIRECTION
-  REACTIVE
-  INVESTIGATION
-  KILLING
-  PROTECTION
-  SUPPORT
-  HEALING
-  DEBUFF
-  THEFT
-  DESTRUCTION
-  ALTERATION
+    VOTE_BLOCKING
+    VOTE_AVOIDING
+    VOTE_REDIRECTION
+    VOTE_IMMUNITY
+    VOTE_CHANGE
+    VISIT_BLOCKING
+    VISIT_REDIRECTION
+    REACTIVE
+    INVESTIGATION
+    KILLING
+    PROTECTION
+    SUPPORT
+    HEALING
+    DEBUFF
+    THEFT
+    DESTRUCTION
+    ALTERATION
 
-  VISITING
-  GLOBAL_COOLDOWN
+    VISITING
+    GLOBAL_COOLDOWN
 }
 
 enum StatusName {
-  Cursed
-  Frozen
-  Paralyzed
-  Burned
-  Empowered
-  Drunk
-  Restrained
-  Disabled
-  Blackmailed
-  Despaired
-  Lucky
-  Unlucky
-  Madness
+    Cursed
+    Frozen
+    Paralyzed
+    Burned
+    Empowered
+    Drunk
+    Restrained
+    Disabled
+    Blackmailed
+    Despaired
+    Lucky
+    Unlucky
+    Madness
 }
 
 enum Rarity {
-  COMMON
-  UNCOMMON
-  RARE
-  EPIC
-  LEGENDARY
-  MYTHICAL
-  UNIQUE
-  ULTIMATE
+    COMMON
+    UNCOMMON
+    RARE
+    EPIC
+    LEGENDARY
+    MYTHICAL
+    UNIQUE
+    ULTIMATE
 }
 
 enum PerkCategory {
-  TOGGLABLE
+    TOGGLABLE
 }
 
 model Role {
-  id                 Int                 @id @default(autoincrement())
-  name               String              @unique
-  alignment          Alignment
-  abilityAttachments AbilityAttachment[]
-  perkAttachments    PerkAttachment[]
+    id                 Int                 @id @default(autoincrement())
+    name               String              @unique
+    alignment          Alignment
+    abilityAttachments AbilityAttachment[]
+    perkAttachments    PerkAttachment[]
 
-  isActive Boolean @default(true)
+    isActive Boolean @default(true)
 
-  updatedAt DateTime? @updatedAt
+    updatedAt DateTime? @updatedAt
 }
 
 model Ability {
-  id             Int              @id @default(autoincrement())
-  name           String           @unique
-  actionType     ActionType?
-  categories     ActionCategory[]
-  charges        Int // -1 is unlimited
-  isAnyAbility   Boolean          @default(false)
-  isRoleSpecific Boolean?
-  rarity         Rarity?
-  effect         String
-  detailedEffect String?
-  orderPriority  Int              @default(0)
-  showCategories Boolean          @default(true)
+    id             Int              @id @default(autoincrement())
+    name           String           @unique
+    actionType     ActionType?
+    categories     ActionCategory[]
+    charges        Int // -1 is unlimited
+    isAnyAbility   Boolean          @default(false)
+    isRoleSpecific Boolean?
+    rarity         Rarity?
+    effect         String
+    detailedEffect String?
+    orderPriority  Int              @default(0)
+    showCategories Boolean          @default(true)
 
-  changes            AbilityChange[]
-  abilityAttachments AbilityAttachment?
+    changes            AbilityChange[]
+    abilityAttachments AbilityAttachment?
 
-  updatedAt   DateTime?    @updatedAt
-  statusLinks StatusLink[]
+    updatedAt   DateTime?    @updatedAt
+    statusLinks StatusLink[]
 }
 
 model Perk {
-  id              Int             @id @default(autoincrement())
-  name            String          @unique
-  categories      PerkCategory[]  @default([])
-  effect          String
-  orderPriority   Int             @default(0)
-  perkAttachments PerkAttachment?
-  statusLinks     StatusLink[]
+    id              Int             @id @default(autoincrement())
+    name            String          @unique
+    categories      PerkCategory[]  @default([])
+    effect          String
+    orderPriority   Int             @default(0)
+    perkAttachments PerkAttachment?
+    statusLinks     StatusLink[]
 
-  immunities StatusName[]
+    immunities StatusName[]
 
-  updatedAt DateTime? @updatedAt
+    updatedAt DateTime? @updatedAt
 }
 
 model AbilityAttachment {
-  id        Int     @id @default(autoincrement())
-  abilities Ability @relation(fields: [abilityId], references: [id])
-  roles     Role[]
-  abilityId Int     @unique
+    id        Int     @id @default(autoincrement())
+    abilities Ability @relation(fields: [abilityId], references: [id])
+    roles     Role[]
+    abilityId Int     @unique
 }
 
 model PerkAttachment {
-  id     Int    @id @default(autoincrement())
-  perk   Perk   @relation(fields: [perkId], references: [id])
-  roles  Role[]
-  perkId Int    @unique
+    id     Int    @id @default(autoincrement())
+    perk   Perk   @relation(fields: [perkId], references: [id])
+    roles  Role[]
+    perkId Int    @unique
 }
 
 model Item {
-  id                 Int              @id @default(autoincrement())
-  name               String           @unique
-  rarity             Rarity
-  actionType         ActionType?
-  categories         ActionCategory[]
-  effect             String
-  detailedEffect     String?
-  cost               Int?
-  bannedFromItemRain Boolean          @default(false)
-  changes            ItemChange[]
-  iconURL            String?
-  customColour       String?
+    id                 Int              @id @default(autoincrement())
+    name               String           @unique
+    rarity             Rarity
+    actionType         ActionType?
+    categories         ActionCategory[]
+    effect             String
+    detailedEffect     String?
+    cost               Int?
+    bannedFromItemRain Boolean          @default(false)
+    changes            ItemChange[]
+    iconURL            String?
+    customColour       String?
 
-  updatedAt   DateTime?    @updatedAt
-  statusLinks StatusLink[]
+    updatedAt   DateTime?    @updatedAt
+    statusLinks StatusLink[]
 }
 
 model Status {
-  id             Int       @id @default(autoincrement())
-  name           String    @unique
-  effect         String
-  detailedEffect String?
-  updatedAt      DateTime? @updatedAt
+    id             Int       @id @default(autoincrement())
+    name           String    @unique
+    effect         String
+    detailedEffect String?
+    updatedAt      DateTime? @updatedAt
 }
 
 enum LinkType {
-  INFLICTION
-  CURE
+    INFLICTION
+    CURE
 }
 
 model StatusLink {
-  id        Int  @id @default(autoincrement())
-  itemId    Int?
-  abilityId Int?
-  perkId    Int?
+    id        Int  @id @default(autoincrement())
+    itemId    Int?
+    abilityId Int?
+    perkId    Int?
 
-  linkType LinkType
-  statuses StatusName[]
-  ability  Ability?     @relation(fields: [abilityId], references: [id])
-  perk     Perk?        @relation(fields: [perkId], references: [id])
-  item     Item?        @relation(fields: [itemId], references: [id])
+    linkType LinkType
+    statuses StatusName[]
+    ability  Ability?     @relation(fields: [abilityId], references: [id])
+    perk     Perk?        @relation(fields: [perkId], references: [id])
+    item     Item?        @relation(fields: [itemId], references: [id])
 }
 
 enum ChangeType {
-  UPGRADE
-  DOWNGRADE
+    UPGRADE
+    DOWNGRADE
 }
 
 model AbilityChange {
-  id         Int        @id @default(autoincrement())
-  ability    Ability    @relation(fields: [abilityId], references: [id])
-  abilityId  Int
-  name       String     @unique
-  effect     String
-  changes    String
-  changeType ChangeType
-  updatedAt  DateTime?  @updatedAt
+    id         Int        @id @default(autoincrement())
+    ability    Ability    @relation(fields: [abilityId], references: [id])
+    abilityId  Int
+    name       String     @unique
+    effect     String
+    changes    String
+    changeType ChangeType
+    updatedAt  DateTime?  @updatedAt
 }
 
 model ItemChange {
-  id         Int        @id @default(autoincrement())
-  item       Item       @relation(fields: [itemId], references: [id])
-  itemId     Int
-  name       String     @unique
-  effect     String
-  changes    String
-  changeType ChangeType
-  updatedAt  DateTime?  @updatedAt
+    id         Int        @id @default(autoincrement())
+    item       Item       @relation(fields: [itemId], references: [id])
+    itemId     Int
+    name       String     @unique
+    effect     String
+    changes    String
+    changeType ChangeType
+    updatedAt  DateTime?  @updatedAt
 }
 
 model Inventory {
-  id Int @id @default(autoincrement())
+    id Int @id @default(autoincrement())
 
-  discordId String  @unique
-  channelId String  @unique
-  messageId String? @unique
+    discordId String  @unique
+    channelId String  @unique
+    messageId String? @unique
 
-  isAlive       Boolean    @default(true)
-  coins         Int        @default(0)
-  luck          Int        @default(0)
-  coinBonus     Int        @default(0)
-  luckBonus     Int        @default(0)
-  inventorySize Int        @default(4)
-  showLuck      Boolean    @default(false)
-  alignment     Alignment?
-  role          String?
+    isAlive       Boolean    @default(true)
+    coins         Int        @default(0)
+    luck          Int        @default(0)
+    coinBonus     Int        @default(0)
+    luckBonus     Int        @default(0)
+    inventorySize Int        @default(4)
+    showLuck      Boolean    @default(false)
+    alignment     Alignment?
+    role          String?
 
-  items        String[]
-  baseAbility  BaseAbility[]
-  basePerk     BasePerk[]
-  anyAbilities AnyAbility[]
-  statuses     AfflictedStatus[]
-  immunities   AfflictedImmunity[]
-  effects      AfflictedEffect[]
+    items        String[]
+    baseAbility  BaseAbility[]
+    basePerk     BasePerk[]
+    anyAbilities AnyAbility[]
+    statuses     AfflictedStatus[]
+    immunities   AfflictedImmunity[]
+    effects      AfflictedEffect[]
 
-  hostNotes        String?
-  submittedActions SubmittedAction[]
-  actionBacklog    ActionBacklog[]
+    hostNotes        String?
+    submittedActions SubmittedAction[]
+    actionBacklog    ActionBacklog[]
 
-  updatedAt DateTime @default(now()) @updatedAt
+    updatedAt DateTime @default(now()) @updatedAt
 }
 
 model BaseAbility {
-  id          Int @id @default(autoincrement())
-  inventoryId Int
+    id          Int @id @default(autoincrement())
+    inventoryId Int
 
-  inventory Inventory @relation(fields: [inventoryId], references: [id])
-  name      String
-  charges   Int       @default(0)
-  cooldown  DateTime?
+    inventory Inventory @relation(fields: [inventoryId], references: [id])
+    name      String
+    charges   Int       @default(0)
+    cooldown  DateTime?
 
-  updatedAt DateTime? @updatedAt
+    updatedAt DateTime? @updatedAt
 }
 
 model BasePerk {
-  id          Int @id @default(autoincrement())
-  inventoryId Int
+    id          Int @id @default(autoincrement())
+    inventoryId Int
 
-  inventory Inventory @relation(fields: [inventoryId], references: [id])
-  name      String
-  toggled   Boolean?
+    inventory Inventory @relation(fields: [inventoryId], references: [id])
+    name      String
+    toggled   Boolean?
 
-  updatedAt DateTime? @updatedAt
+    updatedAt DateTime? @updatedAt
 }
 
 model AnyAbility {
-  id Int @id @default(autoincrement())
+    id Int @id @default(autoincrement())
 
-  inventory   Inventory @relation(fields: [inventoryId], references: [id])
-  inventoryId Int
+    inventory   Inventory @relation(fields: [inventoryId], references: [id])
+    inventoryId Int
 
-  abilityName String
-  charges     Int    @default(1)
+    abilityName String
+    charges     Int    @default(1)
 
-  updatedAt DateTime? @updatedAt
+    updatedAt DateTime? @updatedAt
 }
 
 model AfflictedStatus {
-  id          Int       @id @default(autoincrement())
-  inventory   Inventory @relation(fields: [inventoryId], references: [id])
-  inventoryId Int
+    id          Int       @id @default(autoincrement())
+    inventory   Inventory @relation(fields: [inventoryId], references: [id])
+    inventoryId Int
 
-  statusName String
-  expiry     Int?
-  xFold      Int?
+    statusName String
+    expiry     Int?
+    xFold      Int?
 
-  updatedAt DateTime? @updatedAt
+    updatedAt DateTime? @updatedAt
 }
 
 model AfflictedImmunity {
-  id          Int       @id @default(autoincrement())
-  inventory   Inventory @relation(fields: [inventoryId], references: [id])
-  inventoryId Int
+    id          Int       @id @default(autoincrement())
+    inventory   Inventory @relation(fields: [inventoryId], references: [id])
+    inventoryId Int
 
-  name   String
-  expiry Int?
-  xShot  Int?
+    name   String
+    expiry Int?
+    xShot  Int?
 
-  updatedAt DateTime? @updatedAt
+    updatedAt DateTime? @updatedAt
 }
 
 model AfflictedEffect {
-  id          Int       @id @default(autoincrement())
-  inventory   Inventory @relation(fields: [inventoryId], references: [id])
-  inventoryId Int
+    id          Int       @id @default(autoincrement())
+    inventory   Inventory @relation(fields: [inventoryId], references: [id])
+    inventoryId Int
 
-  name    String
-  details String?
-  expiry  Int?
+    name    String
+    details String?
+    expiry  Int?
 
-  updatedAt DateTime? @updatedAt
+    updatedAt DateTime? @updatedAt
 }
 
 // ACTION FUNNEL
 
 enum PendingActionType {
-  ITEM
-  ABILITY
-  CUSTOM
+    ITEM
+    ABILITY
+    CUSTOM
 }
 
 model ActionBacklog {
-  id Int @id @default(autoincrement())
+    id Int @id @default(autoincrement())
 
-  discordId   String
-  channelId   String          @unique
-  actions     PendingAction[]
-  inventory   Inventory       @relation(fields: [inventoryId], references: [id])
-  inventoryId Int
+    discordId   String
+    channelId   String          @unique
+    actions     PendingAction[]
+    inventory   Inventory       @relation(fields: [inventoryId], references: [id])
+    inventoryId Int
 
-  updatedAt DateTime @default(now()) @updatedAt
+    updatedAt DateTime @default(now()) @updatedAt
 }
 
 model SubmittedAction {
-  id Int @id @default(autoincrement())
+    id Int @id @default(autoincrement())
 
-  inventory   Inventory @relation(fields: [inventoryId], references: [id])
-  inventoryId Int
+    inventory   Inventory @relation(fields: [inventoryId], references: [id])
+    inventoryId Int
 
-  hostMessageId   String @unique
-  playerMessageId String @unique
+    hostMessageId   String @unique
+    playerMessageId String @unique
 }
 
 model PendingAction {
-  id Int @id @default(autoincrement())
+    id Int @id @default(autoincrement())
 
-  actionBacklog   ActionBacklog @relation(fields: [actionBacklogId], references: [id])
-  actionBacklogId Int
+    actionBacklog   ActionBacklog @relation(fields: [actionBacklogId], references: [id])
+    actionBacklogId Int
 
-  actionType  PendingActionType
-  action      String
-  targets     String[]
-  notes       String?
-  selfTarget  Boolean?
-  isPlainText Boolean?
-  timestamp   DateTime?
+    actionType  PendingActionType
+    action      String
+    targets     String[]
+    notes       String?
+    selfTarget  Boolean?
+    isPlainText Boolean?
+    timestamp   DateTime?
 }
